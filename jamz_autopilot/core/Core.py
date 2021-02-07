@@ -13,26 +13,28 @@ class Core:
         pass
 
 
-    async def initializeFlight(self):
+    async def initializeFlight(self, loop):
         #return Autopilot object
 
         #process
-        self.flightEvent = Flight()
+        #self.flightEvent = Flight()
+        Flight(loop)
         
 
 
-    async def initializeComms(self):
+    async def initializeComms(self, loop):
         #return Comms object
 
         #process
-        self.commsEvent = Communications()
+        #self.commsEvent = Communications()
+        Communications(loop)
 
     
     async def onFlightEvent(self, flightEvent : FlightEvent):
         #return none
 
         #process
-       while True:
+        while True:
             await flightEvent.wait()
 
 
@@ -58,15 +60,9 @@ async def main():
 
     loop = asyncio.get_event_loop()
 
-
-
-    Communications(loop)
-    Flight(loop)
-
+    core.initializeComms(loop)
+    core.initializeFlight(loop)
     
-
-
-
     # try:
     #     while(1):
     #         loop.run_until_complete(core.onFlightEvent())
