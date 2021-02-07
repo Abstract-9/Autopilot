@@ -1,31 +1,66 @@
 import asyncio
+import time
+import functools
+import os
+import signal
+
+from ..communications import Communications
+from ..flight import Flight
 
 class Core:
 
-    flightEvent = asyncio.Event
-    commsEvent = asyncio.Event
+    flightEvent = 0 #asyncio.Event
+    commsEvent = 0 #asyncio.Event
+    
+    def __init__(self):
+        pass
 
-    def initializeFlight():
+
+    async def initializeFlight(self):
         #return Autopilot object
-        return 0
+
+        #process
+        self.flightEvent = Flight()
+        
 
 
-    def initializeComms():
+    async def initializeComms(self):
         #return Comms object
-        return 0
+
+        #process
+        self.commsEvent = Communications()
 
     
-    def onFlightEvent():
+    async def onFlightEvent(self):
         #return none
-        return 0
 
-    def onCommsEvent():
+        #process
+        pass
+
+
+    async def onCommsEvent(self):
         #return none
-        return 0
+        
+        #process
+        pass
 
 
-def main():
-    print("Hello World!")
 
-if __name__ == "__main__":
-    main()
+async def main():
+
+    core = Core()
+
+    loop = asyncio.get_event_loop()
+
+    try:
+        loop.run_until_complete(core.onFlightEvent())
+        loop.run_until_complete(core.onCommsEvent())
+    finally:
+        loop.close()
+
+
+    
+
+
+# Python 3.7+
+asyncio.run(main())
