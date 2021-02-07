@@ -4,13 +4,10 @@ import functools
 import os
 import signal
 
-from ..communications import Communications
-from ..flight import Flight
+from ..communications import Communications, CommunicationsEvent
+from ..flight import Flight, FlightEvent
 
 class Core:
-
-    flightEvent = 0 #asyncio.Event
-    commsEvent = 0 #asyncio.Event
     
     def __init__(self):
         pass
@@ -31,19 +28,28 @@ class Core:
         self.commsEvent = Communications()
 
     
-    async def onFlightEvent(self):
+    async def onFlightEvent(self, flightEvent : FlightEvent):
         #return none
 
         #process
-        pass
+       while True:
+            await flightEvent.wait()
 
 
-    async def onCommsEvent(self):
+            #do stuff
+            flightEvent.reset()
+
+
+    async def onCommsEvent(self, commsEvent : CommunicationsEvent):
         #return none
         
         #process
-        pass
+        while True:
+            await commsEvent.wait()
 
+
+            #do stuff
+            commsEvent.reset()
 
 
 async def main():
@@ -52,12 +58,23 @@ async def main():
 
     loop = asyncio.get_event_loop()
 
-    try:
-        loop.run_until_complete(core.onFlightEvent())
-        loop.run_until_complete(core.onCommsEvent())
-    finally:
-        loop.close()
 
+
+    Communications(loop)
+    Flight(loop)
+
+    
+
+
+
+    # try:
+    #     while(1):
+    #         loop.run_until_complete(core.onFlightEvent())
+    #         loop.run_until_complete(core.onCommsEvent())
+    #     Communications(loop)
+    #     Flight(loop)
+    # finally:
+    #     loop.close()
 
     
 
