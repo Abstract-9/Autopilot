@@ -1,5 +1,5 @@
 
-from ..navigation import Controller
+from jamz_autopilot.flight.navigation import Controller
 
 class Ardupilot(Controller):
     def __init__(self):
