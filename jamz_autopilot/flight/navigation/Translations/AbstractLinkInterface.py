@@ -1,7 +1,7 @@
 
 
 from abc import ABC, abstractmethod
-from jamz_autopilot.flight.navigation.controller import Controller
+from jamz_autopilot.flight.navigation.Controller import Controller
 
 class LinkInterface (ABC) :
 
