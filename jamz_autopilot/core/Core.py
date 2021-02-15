@@ -58,7 +58,10 @@ class Core:
         while True:
             await flightEvent.wait()
 
-            self.comms.commands.append(flightEvent.command())
+            self.config["battery"] = flightEvent.battery
+            self.config["lat"] = flightEvent.lat
+            self.config["long"] = flightEvent.long
+            self.config["alt"] = flightEvent.alt
 
             #do stuff
             flightEvent.reset()
@@ -71,7 +74,7 @@ class Core:
         while True:
             await commsEvent.wait()
 
-            self.flight.commands.append(commsEvent.command())
+            self.flight.commands.append(commsEvent.command)
 
             #do stuff
             commsEvent.reset()
@@ -94,7 +97,7 @@ async def main():
     #     Flight(loop)
     # finally:
     #     loop.close()
-    
+
 
 # Python 3.7+
 asyncio.run(main())
