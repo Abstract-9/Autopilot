@@ -4,11 +4,13 @@ import uuid
 
 from .producer import KafkaProducer
 from .consumer import KafkaConsumer
+from ..core import Core
+
 from confluent_kafka.admin import AdminClient, NewTopic
 
 
 class Communications:
-    config = {}  # Dummy variable, to be replaced with the actual config provided by core
+    config = Core.getInstance().config  # Dummy variable, to be replaced with the actual config provided by core
     ready = asyncio.locks.Event()
 
     # Kafka Bootstrap & config
@@ -17,13 +19,14 @@ class Communications:
     topic = "DRONE_" + id
 
     def __init__(self, loop, test: bool):
+
         # Disable automatic producing and consuming if running a unit test
         self.test = test
-
 
         # Manage the topic info. The drones topic is based on its MAC address to ensure its unique.
         self.loop = loop
         self.event = CommandEvent()
+        Core.getInstance().onCommsEvent(self.event)
         loop.create_task(self._initialize())
 
     # Now for the async initialization
@@ -52,8 +55,7 @@ class Communications:
         config = self.config
         self.producer.produce(self.topic, key="status", value=json.dumps({
             "location": config['location'],
-            "battery": config['battery'],
-            "velocity": config['velocity'],
+            "battery": config['battery']
         }))
         self.loop.call_later(1, self.send_status)
         # TODO implement delivery ack logic
@@ -84,3 +86,14 @@ class CommandEvent(asyncio.Event):
     def __init__(self):
         super(CommandEvent, self).__init__()
         self.command = None
+
+
+### {
+###  'type': {string} - One of: "Ascend, Descend, Land, Goto"
+###  'altitude': int - the altitude to maintain
+###  'latitude': int - latitude
+###  'longitude': int - longitude
+### }
+###
+###
+###
