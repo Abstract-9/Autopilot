@@ -138,7 +138,7 @@ class Ardupilot(Controller):
             self.drone.mode = VehicleMode("descend")
 
     # Command mapping. There's definitely a better way to do this.
-    async def execute_command(self, command):
+    async def execute_command(self, command, operationLock):
         # Command bindings
         command_bindings = {
             Command.GOTO: [self.goto, self.ensure_goto],
@@ -151,6 +151,11 @@ class Ardupilot(Controller):
             await command_bindings[command.command][0](command)
         else:
             await command_bindings[command.command][1]()
+
+        if self.status == self.STATUS_DONE_COMMAND:
+            operationLock.release()
+        loop = asyncio.get_event_loop()
+        loop.call_later(1, self.execute_command, command, operationLock)
 
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
@@ -171,6 +176,14 @@ class Ardupilot(Controller):
             "lat": self.drone.location.global_relative_frame.lat,
             "lon": self.drone.location.global_relative_frame.lon,
             "alt": self.drone.location.global_relative_frame.alt
+        }
+
+    def get_vital_info(self):
+        return {
+            "lat": self.drone.location.global_relative_frame.lat,
+            "lon": self.drone.location.global_relative_frame.lon,
+            "alt": self.drone.location.global_relative_frame.alt,
+            "Battery": self.drone.battery,
         }
 
     ################# Utility section #################

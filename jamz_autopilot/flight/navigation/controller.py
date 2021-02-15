@@ -43,7 +43,8 @@ class Controller:
                 self.current_command = self.commands.pop(0)
                 try:
                     # drone is supposedly initialized in initialize()
-                    asyncio.create_task(drone.execute_command(self.current_command))
+                    asyncio.create_task(drone.execute_command(self.current_command, self.operationLock))
                 finally:
+                    await self.operationLock.acquire()
                     self.operationLock.release()
 
