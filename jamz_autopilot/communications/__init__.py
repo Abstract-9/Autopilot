@@ -1,1 +1,1 @@
-from .communications import CommandEvent, Communications
+from .communications import CommandEvent
