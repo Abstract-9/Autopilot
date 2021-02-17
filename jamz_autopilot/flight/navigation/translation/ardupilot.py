@@ -6,7 +6,7 @@ from .link_interface import LinkInterface
 from . import flight_status
 from ..command import Command
 
-
+# TODO Ismail, Zak unit tests
 class Ardupilot(LinkInterface):
     # Create pre-defined flight status objects
     STATUS_IDLE = flight_status(0)
@@ -21,6 +21,7 @@ class Ardupilot(LinkInterface):
     ################# CONTROL SECTION #################
     # This section contains methods for changing various states in the flight controller
 
+    # TODO: Create unit test
     async def arm(self):
         while not self.drone.is_armable:
             print(" Waiting for vehicle to initialise...")
@@ -36,6 +37,7 @@ class Ardupilot(LinkInterface):
             await asyncio.sleep(1)
         print("Armed!")
 
+    # TODO: Create unit test
     async def disarm(self):
         self.drone.armed = False
         while self.drone.armed:
@@ -140,7 +142,8 @@ class Ardupilot(LinkInterface):
         else:
             self.drone.mode = VehicleMode("descend")
 
-    # Command mapping. There's definitely a better way to do this.
+    # TODO: Create unit test
+    # Command mapping.
     async def execute_command(self, command, operation_lock):
         # Command bindings
         command_bindings = {
@@ -165,6 +168,7 @@ class Ardupilot(LinkInterface):
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
 
+    # TODO: Create unit test
     def get_status(self):
         return {
             "GPS": self.drone.gps_0,
@@ -176,6 +180,7 @@ class Ardupilot(LinkInterface):
             "Altitude": self.drone.location.global_relative_frame.alt
         }
 
+    # TODO: Create unit test
     def get_location(self):
         return {
             "lat": self.drone.location.global_relative_frame.lat,
@@ -183,6 +188,7 @@ class Ardupilot(LinkInterface):
             "alt": self.drone.location.global_relative_frame.alt
         }
 
+    # TODO: Create unit test
     def get_vital_info(self):
         return {
             "lat": self.drone.location.global_relative_frame.lat,
@@ -194,9 +200,11 @@ class Ardupilot(LinkInterface):
     ################# Utility section #################
     # This section contains various utility and I/O methods
 
+    # TODO: Create unit test
     def close_connection(self):
         self.drone.close()
 
+    # TODO: Create unit test
     def __init__(self, device):
         self.drone = connect(device)
         print("Drone connected!")
@@ -225,6 +233,7 @@ class Ardupilot(LinkInterface):
 # The following is utility functions for various calculations
 
 
+# TODO: Create unit test
 def get_distance_metres(location1, location2):
     """
     Returns the ground distance in metres between two LocationGlobal objects.
@@ -238,6 +247,7 @@ def get_distance_metres(location1, location2):
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
 
 
+# TODO: Create unit test
 def get_bearing(location1, location2):
     """
     Returns the bearing between the two LocationGlobal objects passed as parameters.
