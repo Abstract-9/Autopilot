@@ -1,6 +1,6 @@
 import asyncio
 
-from jamz_autopilot.flight.navigation.translations.Ardupilot import Ardupilot
+from translation.Ardupilot import Ardupilot
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
@@ -9,8 +9,7 @@ from jamz_autopilot.flight.navigation.translations.Ardupilot import Ardupilot
 # use lock to make sure only one command happening at time
 
 
-
-class Controller:
+class FlightController:
     def __init__(self):
         self.commands = []
         self.current_command = None
@@ -29,7 +28,7 @@ class Controller:
     
     def set_coordinates(self):
         # returns void
-        # functionality implemented in Command.py
+        # functionality implemented in command.py
         pass
 
     def main_loop(self):
@@ -38,7 +37,7 @@ class Controller:
                 # Case: All commands have been executed
                 await asyncio.sleep(1)
 
-            elif self.commads and not self.operationLock.locked():
+            elif self.commands and not self.operationLock.locked():
                 await self.operationLock.acquire()
                 self.current_command = self.commands.pop(0)
                 try:

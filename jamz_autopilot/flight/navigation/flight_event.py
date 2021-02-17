@@ -1,5 +1,6 @@
 import asyncio
-from jamz_autopilot.flight.navigation.translations.Ardupilot import Ardupilot
+from jamz_autopilot.flight.navigation.translation.Ardupilot import Ardupilot
+
 
 class FlightEvent(asyncio.Event):
 

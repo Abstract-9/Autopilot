@@ -2,13 +2,13 @@
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 from jamz_autopilot.flight.navigation.Controller import Controller
 import asyncio
-from . import FlightStatus
+from . import flight_status
 
 class Ardupilot(Controller):
     # Create pre-defined flight status objects
-    STATUS_IDLE = FlightStatus(0)
-    STATUS_DONE_COMMAND = FlightStatus(1)
-    STATUS_EXECUTING_COMMAND = FlightStatus(2)
+    STATUS_IDLE = flight_status(0)
+    STATUS_DONE_COMMAND = flight_status(1)
+    STATUS_EXECUTING_COMMAND = flight_status(2)
 
     # Define drone ground speed in m/s.
     GROUND_SPEED = 1
@@ -138,7 +138,7 @@ class Ardupilot(Controller):
             self.drone.mode = VehicleMode("descend")
 
     # Command mapping. There's definitely a better way to do this.
-    async def execute_command(self, command, operationLock):
+    async def execute_command(self, command, operation_lock):
         # Command bindings
         command_bindings = {
             Command.GOTO: [self.goto, self.ensure_goto],
@@ -153,9 +153,9 @@ class Ardupilot(Controller):
             await command_bindings[command.command][1]()
 
         if self.status == self.STATUS_DONE_COMMAND:
-            operationLock.release()
+            operation_lock.release()
         loop = asyncio.get_event_loop()
-        loop.call_later(1, self.execute_command, command, operationLock)
+        loop.call_later(1, self.execute_command, command, operation_lock)
 
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
