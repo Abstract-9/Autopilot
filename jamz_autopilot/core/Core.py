@@ -7,27 +7,48 @@ import signal
 from ..communications import Communications, CommunicationsEvent
 from ..flight import Flight, FlightEvent
 
+
 class Core:
-    
+
+    config = {
+        "battery" : None,
+        "lat" : None,
+        "long" : None,
+        "alt" : None
+    }
+
+    instance = None
+    flight = None
+    comms = None
+
+    @staticmethod 
+    def getInstance():
+      
+        if Core.instance == None:
+            Core()
+        return Core.instance
+
+
     def __init__(self):
-        pass
+      
+        if Core.instance != None:
+            raise Exception("This Class is a Singleton!")
+        else:
+            Core.instance = self
 
 
     async def initializeFlight(self, loop):
-        #return Autopilot object
-
         #process
         #self.flightEvent = Flight()
-        Flight(loop)
-        
-
+        self.flight = Flight(loop)
+        return self.flight
+    
 
     async def initializeComms(self, loop):
-        #return Comms object
-
         #process
         #self.commsEvent = Communications()
-        Communications(loop)
+        self.comms = Communications(loop)
+        return self.comms
 
     
     async def onFlightEvent(self, flightEvent : FlightEvent):
@@ -37,6 +58,10 @@ class Core:
         while True:
             await flightEvent.wait()
 
+            self.config["battery"] = flightEvent.battery
+            self.config["lat"] = flightEvent.lat
+            self.config["long"] = flightEvent.long
+            self.config["alt"] = flightEvent.alt
 
             #do stuff
             flightEvent.reset()
@@ -49,6 +74,7 @@ class Core:
         while True:
             await commsEvent.wait()
 
+            self.flight.commands.append(commsEvent.command)
 
             #do stuff
             commsEvent.reset()
@@ -56,7 +82,7 @@ class Core:
 
 async def main():
 
-    core = Core()
+    core = Core.getInstance()
 
     loop = asyncio.get_event_loop()
 
@@ -71,8 +97,6 @@ async def main():
     #     Flight(loop)
     # finally:
     #     loop.close()
-
-    
 
 
 # Python 3.7+
