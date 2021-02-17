@@ -10,7 +10,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 
 
 class Communications:
-    config = Core.getInstance().config
+    config = Core.get_instance().config
     ready = asyncio.locks.Event()
 
     # Kafka Bootstrap & config
@@ -22,11 +22,10 @@ class Communications:
         # Disable automatic producing and consuming if running a unit test
         self.test = test
 
-
         # Manage the topic info. The drones topic is based on its MAC address to ensure its unique.
         self.loop = loop
         self.event = CommandEvent()
-        Core.getInstance().onCommsEvent(self.event)
+        Core.get_instance().on_comms_event(self.event)
         loop.create_task(self._initialize())
 
     # Now for the async initialization
@@ -54,7 +53,9 @@ class Communications:
     def send_status(self):
         config = self.config
         self.producer.produce(self.topic, key="status", value=json.dumps({
-            "location": config['location'],
+            "lat": config['lat'],
+            "lon": config['lon'],
+            "alt": config['alt'],
             "battery": config['battery'],
         }))
         self.loop.call_later(1, self.send_status)

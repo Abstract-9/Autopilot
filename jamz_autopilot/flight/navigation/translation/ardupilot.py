@@ -1,14 +1,17 @@
-
-from dronekit import connect, VehicleMode, LocationGlobalRelative
-from jamz_autopilot.flight.navigation.Controller import Controller
 import asyncio
-from . import FlightStatus
+import math
+from dronekit import connect, VehicleMode, LocationGlobalRelative
 
-class Ardupilot(Controller):
+from .link_interface import LinkInterface
+from . import flight_status
+from ..command import Command
+
+
+class Ardupilot(LinkInterface):
     # Create pre-defined flight status objects
-    STATUS_IDLE = FlightStatus(0)
-    STATUS_DONE_COMMAND = FlightStatus(1)
-    STATUS_EXECUTING_COMMAND = FlightStatus(2)
+    STATUS_IDLE = flight_status(0)
+    STATUS_DONE_COMMAND = flight_status(1)
+    STATUS_EXECUTING_COMMAND = flight_status(2)
 
     # Define drone ground speed in m/s.
     GROUND_SPEED = 1
@@ -138,7 +141,7 @@ class Ardupilot(Controller):
             self.drone.mode = VehicleMode("descend")
 
     # Command mapping. There's definitely a better way to do this.
-    async def execute_command(self, command, operationLock):
+    async def execute_command(self, command, operation_lock):
         # Command bindings
         command_bindings = {
             Command.GOTO: [self.goto, self.ensure_goto],
@@ -153,9 +156,11 @@ class Ardupilot(Controller):
             await command_bindings[command.command][1]()
 
         if self.status == self.STATUS_DONE_COMMAND:
-            operationLock.release()
-        loop = asyncio.get_event_loop()
-        loop.call_later(1, self.execute_command, command, operationLock)
+            operation_lock.release()
+        else:
+            loop = asyncio.get_event_loop()
+            await asyncio.sleep(0.5)
+            loop.create_task(self.execute_command(command, operation_lock))
 
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
@@ -189,35 +194,12 @@ class Ardupilot(Controller):
     ################# Utility section #################
     # This section contains various utility and I/O methods
 
-    def send_heartbeat(self):
-        try:
-            data = self.get_location().update(
-                {"state": self.drone.system_status.state,
-                 "mode": self.drone.mode.name,
-                 "velocity": self.drone.velocity,
-                 "heading": self.drone.heading})
-            response = requests.post("%s/drones/%d/heartbeat" % (self.controller, self.drone_id), data=data)
-        except Exception as e:
-            print("uh oh, can't reach home. Keep flying for now...")
-            self.time_without_network += 5
-            if self.time_without_network == self.NETWORK_TIMEOUT:
-                print("network timeout reached. Returning home.")
-                self.return_home()
-            return
-        if response.status_code == 505:
-            # 505 means we need to change our ID. This should almost never happen
-            self.drone_id = response.json()['id']
-
     def close_connection(self):
         self.drone.close()
 
-    def __init__(self, device, drone_id, home):
+    def __init__(self, device):
         self.drone = connect(device)
         print("Drone connected!")
-        # Variables for talking to the controller
-        self.drone_id = drone_id
-        self.controller = home
-        self.commands = []
         # Variables for controlling network timeout
         self.heartbeat_counter = 0
         self.time_without_network = 0
@@ -240,31 +222,33 @@ class Ardupilot(Controller):
 
         print("Ready to go! Home location: %s" % self.home_location)
 
-    # The following is utility functions for various calculations
+# The following is utility functions for various calculations
 
-    def get_distance_metres(location1, location2):
-        """
-        Returns the ground distance in metres between two LocationGlobal objects.
 
-        This method is an approximation, and will not be accurate over large distances and close to the
-        earth's poles. It comes from the ArduPilot test code:
-        https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
-        """
-        dlat = location2.lat - location1.lat
-        dlong = location2.lon - location1.lon
-        return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
+def get_distance_metres(location1, location2):
+    """
+    Returns the ground distance in metres between two LocationGlobal objects.
 
-    def get_bearing(location1, location2):
-        """
-        Returns the bearing between the two LocationGlobal objects passed as parameters.
+    This method is an approximation, and will not be accurate over large distances and close to the
+    earth's poles. It comes from the ArduPilot test code:
+    https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
+    """
+    dlat = location2.lat - location1.lat
+    dlong = location2.lon - location1.lon
+    return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
 
-        This method is an approximation, and may not be accurate over large distances and close to the
-        earth's poles. It comes from the ArduPilot test code:
-        https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
-        """
-        off_x = location2.lon - location1.lon
-        off_y = location2.lat - location1.lat
-        bearing = 90.00 + math.atan2(-off_y, off_x) * 57.2957795
-        if bearing < 0:
-            bearing += 360.00
-        return bearing
+
+def get_bearing(location1, location2):
+    """
+    Returns the bearing between the two LocationGlobal objects passed as parameters.
+
+    This method is an approximation, and may not be accurate over large distances and close to the
+    earth's poles. It comes from the ArduPilot test code:
+    https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
+    """
+    off_x = location2.lon - location1.lon
+    off_y = location2.lat - location1.lat
+    bearing = 90.00 + math.atan2(-off_y, off_x) * 57.2957795
+    if bearing < 0:
+        bearing += 360.00
+    return bearing

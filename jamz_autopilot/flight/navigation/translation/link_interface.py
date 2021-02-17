@@ -1,21 +1,16 @@
-
-
 from abc import ABC, abstractmethod
-from jamz_autopilot.flight.navigation.Controller import Controller
 
-class LinkInterface (ABC) :
 
-    #Controller class variable
-    controller = Controller.initialize()
+class LinkInterface (ABC):
 
     #absract method goTo directs drone go to a given location
-    def goTo(self):
+    def goto(self, command):
         return
 
     #absract method ascend directs drone to ascend to a level
-    def ascend(self):
+    def ascend(self, command):
         return
 
     # absract method ascend directs drone to descend to a level
-    def descend(self):
+    def descend(self, command):
         return
