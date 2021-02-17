@@ -1,6 +1,6 @@
 import asyncio
 
-from translation.Ardupilot import Ardupilot
+from translation import Ardupilot
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
@@ -10,20 +10,18 @@ from translation.Ardupilot import Ardupilot
 
 
 class FlightController:
+
+    # How to connect to the hardware flight controller. Some examples;
+    # "/dev/ttyACM0" Serial interface over USB
+    # "tcp://127.0.0.1:6603" Local TCP connection
+    # "udp://127.0.0.1:5202" Local UDP connection
+    device = "/dev/ttyACM0"
+
     def __init__(self):
         self.commands = []
         self.current_command = None
-        self.operationLock = asyncio.Lock()  # this is the mutex lock
-
-        pass
-
-    async def initialize(self):
-        # returns Controller
-        # create queue, lock
-
-        # Not sure how to establish drone
-        # drone =
-
+        self.operation_lock = asyncio.Lock()  # this is the mutex lock
+        self.translator = Ardupilot(self.device)
         pass
     
     def set_coordinates(self):
@@ -32,18 +30,20 @@ class FlightController:
         pass
 
     def main_loop(self):
-        while True:
-            if len(self.commands) == 0:
-                # Case: All commands have been executed
-                await asyncio.sleep(1)
+        if len(self.commands) == 0:
+            # Case: All commands have been executed
+            await asyncio.sleep(0.5)
 
-            elif self.commands and not self.operationLock.locked():
-                await self.operationLock.acquire()
-                self.current_command = self.commands.pop(0)
-                try:
-                    # drone is supposedly initialized in initialize()
-                    asyncio.create_task(drone.execute_command(self.current_command, self.operationLock))
-                finally:
-                    await self.operationLock.acquire()
-                    self.operationLock.release()
+        elif self.commands and not self.operation_lock.locked():
+            await self.operation_lock.acquire()
+            self.current_command = self.commands.pop(0)
+            try:
+                # drone is supposedly initialized in initialize()
+                asyncio.create_task(self.translator.execute_command(self.current_command, self.operation_lock))
+            finally:
+                await self.operation_lock.acquire()
+                self.operation_lock.release()
+
+        # Schedule callback
+        asyncio.get_event_loop().call_later(0.5, self.main_loop)
 
