@@ -50,7 +50,7 @@ class Core:
 
             self.config["battery"] = flight_event.battery
             self.config["lat"] = flight_event.lat
-            self.config["long"] = flight_event.long
+            self.config["long"] = flight_event.lon
             self.config["alt"] = flight_event.alt
 
             flight_event.reset()

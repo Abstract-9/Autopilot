@@ -1,6 +1,8 @@
 import asyncio
 
 from translation import Ardupilot
+from flight_event import FlightEvent
+from jamz_autopilot.core import Core
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
@@ -22,7 +24,7 @@ class FlightController:
         self.current_command = None
         self.operation_lock = asyncio.Lock()  # this is the mutex lock
         self.translator = Ardupilot(self.device)
-        pass
+        Core.get_instance().on_flight_event(FlightEvent(self))
     
     def set_coordinates(self):
         # returns void

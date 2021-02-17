@@ -53,7 +53,9 @@ class Communications:
     def send_status(self):
         config = self.config
         self.producer.produce(self.topic, key="status", value=json.dumps({
-            "location": config['location'],
+            "lat": config['lat'],
+            "lon": config['lon'],
+            "alt": config['alt'],
             "battery": config['battery'],
         }))
         self.loop.call_later(1, self.send_status)

@@ -4,19 +4,19 @@ from jamz_autopilot.flight.navigation.translation.Ardupilot import Ardupilot
 
 class FlightEvent(asyncio.Event):
 
-    def __init__(self):
+    def __init__(self, controller_instance):
         super(FlightEvent, self).__init__()
         self.battery = None
         self.lat = None
         self.lon = None
         self.alt = None
+        self.controller_instance = controller_instance
 
-        self.update_vital_info()
-
+        # Give the flight controller communications interface some time to initialize before querying it
+        asyncio.get_event_loop().call_later(5, self.update_vital_info)
 
     def update_vital_info(self):
-
-        vitals = Ardupilot.get_vital_info()
+        vitals = self.controller_instance.translator.get_vital_info()
 
         self.battery = vitals.Battery
         self.lat = vitals.lat
