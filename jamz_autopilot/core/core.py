@@ -8,6 +8,7 @@ from ..communications import Communications, CommandEvent
 from ..flight.navigation import FlightController, FlightEvent
 
 
+# TODO Zak unit tests
 class Core:
 
     config = {
@@ -21,13 +22,15 @@ class Core:
     flight = None
     comms = None
 
-    @staticmethod 
+    # TODO: Create unit test
+    @staticmethod
     def get_instance():
       
         if Core.instance is None:
             Core()
         return Core.instance
 
+    # TODO: Create unit test
     def __init__(self):
       
         if Core.instance is not None:
@@ -35,14 +38,17 @@ class Core:
         else:
             Core.instance = self
 
+    # TODO: Create unit test
     async def initialize_flight(self, loop):
         self.flight = FlightController(loop)
         return self.flight
 
+    # TODO: Create unit test
     async def initialize_comms(self, loop):
         self.comms = Communications(loop, False)
         return self.comms
 
+    # TODO: Create unit test
     async def on_flight_event(self, flight_event: FlightEvent):
 
         while True:
@@ -55,6 +61,7 @@ class Core:
 
             flight_event.reset()
 
+    # TODO: Create unit test
     async def on_comms_event(self, comms_event: CommandEvent):
 
         while True:
@@ -65,6 +72,7 @@ class Core:
             comms_event.reset()
 
 
+# TODO: Create unit test
 async def main():
 
     core = Core.get_instance()

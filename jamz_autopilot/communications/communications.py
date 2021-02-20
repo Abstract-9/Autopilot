@@ -8,7 +8,7 @@ from ..core import Core
 
 from confluent_kafka.admin import AdminClient, NewTopic
 
-
+# TODO Logan Unit tests
 class Communications:
     config = Core.get_instance().config
     ready = asyncio.locks.Event()
@@ -18,6 +18,7 @@ class Communications:
     id = hex(uuid.getnode())
     topic = "DRONE_" + id
 
+    # TODO: Create unit test
     def __init__(self, loop, test: bool):
         # Disable automatic producing and consuming if running a unit test
         self.test = test
@@ -28,6 +29,7 @@ class Communications:
         Core.get_instance().on_comms_event(self.event)
         loop.create_task(self._initialize())
 
+    # TODO: Create unit test
     # Now for the async initialization
     async def _initialize(self):
 
@@ -50,6 +52,7 @@ class Communications:
         if not self.test:
             self.loop.call_soon(self.send_status)
 
+    # TODO: Create unit test
     def send_status(self):
         config = self.config
         self.producer.produce(self.topic, key="status", value=json.dumps({
@@ -61,6 +64,7 @@ class Communications:
         self.loop.call_later(1, self.send_status)
         # TODO implement delivery ack logic
 
+    # TODO: Create unit test
     def poll_commands(self):
         message = self.consumer.poll(1)
         if message is not None:
@@ -70,6 +74,7 @@ class Communications:
             self.event.set()
         self.loop.call_soon(self.poll_commands)
 
+    # TODO: Create unit test
     # This is used to check if the drone's topic exists in our kafka cluster
     async def check_topic(self):
         if self.topic not in self.client.list_topics(self.topic).topics:
@@ -84,6 +89,7 @@ class Communications:
 
 class CommandEvent(asyncio.Event):
 
+    # TODO: Create unit test
     def __init__(self):
         super(CommandEvent, self).__init__()
         self.command = None

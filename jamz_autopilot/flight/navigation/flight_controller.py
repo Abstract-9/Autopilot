@@ -10,7 +10,7 @@ from jamz_autopilot.core import Core
 # Controller uses option lock to make one flight command go at a time
 # use lock to make sure only one command happening at time
 
-
+# TODO Omar unit tests
 class FlightController:
 
     # How to connect to the hardware flight controller. Some examples;
@@ -19,18 +19,17 @@ class FlightController:
     # "udp://127.0.0.1:5202" Local UDP connection
     device = "/dev/ttyACM0"
 
-    def __init__(self):
+    # TODO: Create unit test
+    def __init__(self, device=None):
         self.commands = []
         self.current_command = None
+        if device:
+            self.device = device
         self.operation_lock = asyncio.Lock()  # this is the mutex lock
         self.translator = Ardupilot(self.device)
         Core.get_instance().on_flight_event(FlightEvent(self))
-    
-    def set_coordinates(self):
-        # returns void
-        # functionality implemented in command.py
-        pass
 
+    # TODO: Create unit test
     def main_loop(self):
         if len(self.commands) == 0:
             # Case: All commands have been executed
