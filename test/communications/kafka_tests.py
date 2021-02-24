@@ -13,6 +13,7 @@ class BasicReadWrite(aiounittest.AsyncTestCase):
         comms = Communications(asyncio.get_event_loop(), True)
         test_str = "test_" + str(random.randint(1, 100))
         comms.config["test"] = test_str
+        print(comms.topic)
 
         await comms.ready.wait()
 
@@ -31,6 +32,8 @@ class BasicReadWrite(aiounittest.AsyncTestCase):
                 self.assertEqual("test", message.key().decode('ascii'))
                 self.assertEqual(test_str, message.value().decode('ascii'))
                 break
+            # If we didn't see the message, we probably fast-forwarded too early. Lets try again
+            comms.producer.produce(comms.topic, key="test", value=test_str)
             await asyncio.sleep(1)
             if i == 4:
                 self.fail("No message seen from consumer")

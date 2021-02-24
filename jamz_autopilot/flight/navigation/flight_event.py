@@ -1,5 +1,5 @@
 import asyncio
-from jamz_autopilot.flight.navigation.translation.Ardupilot import Ardupilot
+from jamz_autopilot.flight.navigation.translation import Ardupilot
 
 # TODO Jonathan unit tests
 class FlightEvent(asyncio.Event):

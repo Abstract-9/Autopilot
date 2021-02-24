@@ -4,14 +4,11 @@ import uuid
 
 from .producer import KafkaProducer
 from .consumer import KafkaConsumer
-from ..core import Core
 
 from confluent_kafka.admin import AdminClient, NewTopic
 
 # TODO Logan Unit tests
 class Communications:
-    config = Core.get_instance().config
-    ready = asyncio.locks.Event()
 
     # Kafka Bootstrap & config
     endpoints = 'confluent.loganrodie.me'
@@ -20,6 +17,15 @@ class Communications:
 
     # TODO: Create unit test
     def __init__(self, loop, test: bool):
+        # To avoid circular import
+        from ..core import Core
+
+        # Grab config for heartbeat
+        self.config = Core.get_instance().config
+
+        # Set up ready event
+        self.ready = asyncio.locks.Event(loop=loop)
+
         # Disable automatic producing and consuming if running a unit test
         self.test = test
 
@@ -77,12 +83,14 @@ class Communications:
     # TODO: Create unit test
     # This is used to check if the drone's topic exists in our kafka cluster
     async def check_topic(self):
-        if self.topic not in self.client.list_topics(self.topic).topics:
-    
+        if self.client.list_topics(self.topic).topics[self.topic].error:
+            topics = self.client.create_topics(
+                [NewTopic(self.topic, num_partitions=1, replication_factor=1),
+                 NewTopic(self.topic + "_COMMAND", num_partitions=1, replication_factor=1)])
             try:
-                topics = await self.client.create_topics(
-                    [NewTopic(self.topic, num_partitions=1, replication_factor=1),
-                     NewTopic(self.topic + "_COMMAND", num_partitions=1, replication_factor=1)])
+                for topic, future in topics.items():
+                    future.result()
+
             except Exception as e:
                 print("Failed to create a topic for {}: {}".format(self.topic, e))
 

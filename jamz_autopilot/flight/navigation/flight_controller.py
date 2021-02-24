@@ -1,8 +1,7 @@
 import asyncio
 
-from translation import Ardupilot
-from flight_event import FlightEvent
-from jamz_autopilot.core import Core
+from .translation import Ardupilot
+from .flight_event import FlightEvent
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
@@ -21,16 +20,21 @@ class FlightController:
 
     # TODO: Create unit test
     def __init__(self, device=None):
+        # Import upon construction to avoid circular imports
+        from jamz_autopilot.core import Core
+
         self.commands = []
         self.current_command = None
         if device:
             self.device = device
         self.operation_lock = asyncio.Lock()  # this is the mutex lock
         self.translator = Ardupilot(self.device)
+
         Core.get_instance().on_flight_event(FlightEvent(self))
+        asyncio.get_event_loop().create_task(self.main_loop())
 
     # TODO: Create unit test
-    def main_loop(self):
+    async def main_loop(self):
         if len(self.commands) == 0:
             # Case: All commands have been executed
             await asyncio.sleep(0.5)
@@ -46,5 +50,6 @@ class FlightController:
                 self.operation_lock.release()
 
         # Schedule callback
-        asyncio.get_event_loop().call_later(0.5, self.main_loop)
+        await asyncio.sleep(0.5)
+        asyncio.get_event_loop().create_task(self.main_loop())
 
