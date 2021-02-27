@@ -30,7 +30,7 @@ class FlightController:
         Core.get_instance().on_flight_event(FlightEvent(self))
 
     # TODO: Create unit test
-    def main_loop(self):
+    async def main_loop(self):
         if len(self.commands) == 0:
             # Case: All commands have been executed
             await asyncio.sleep(0.5)
