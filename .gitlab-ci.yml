@@ -1,11 +1,18 @@
-build: 
-  script: 
-    - "echo \"Building\""
-    - "echo \"Setting up drone kit\""
-  stage: build
-stages: "-build -test"
-test: 
-  script: 
-    - "echo \"Testing...\""
-    - "echo \"Starting all unit tests!\""
-  stage: test
+stages:
+     -build
+     -test
+
+build:
+      stage: build
+      script:
+         - echo Building
+         - echo Setting up drone kit
+
+test:
+     stage: test
+     script:
+        - echo Testing...
+        - echo Starting all unit tests!
+
+     
+
