@@ -1,0 +1,18 @@
+stages:
+     -build
+     -test
+
+build:
+      stage: build
+      script:
+         - echo "Building"
+         - echo "Setting up drone kit"
+
+test:
+     stage: test
+     script:
+        - echo "Testing..."
+        - echo "Starting all unit tests!"
+
+     
+
