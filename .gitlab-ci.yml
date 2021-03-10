@@ -1,18 +1,12 @@
-stages: "-build -test"
-
-     
-
-build:
-      stage: build
-      script:
-         - echo Building
-         - echo Setting up drone kit
+build-job:
+  stage: build
+  script:
+    - echo "building..."
+    - echo "setting up drone-kit"
 
 test:
-     stage: test
-     script:
-        - echo Testing...
-        - echo Starting all unit tests!
+  stage: test
+  script:
+    - echo "starting unit tests!"
 
-     
 
