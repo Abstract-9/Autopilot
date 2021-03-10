@@ -1,8 +1,8 @@
 import asyncio
 
-from translation import Ardupilot
-from flight_event import FlightEvent
-from jamz_autopilot.core import Core
+from jamz_autopilot.flight.navigation.translation.ardupilot import Ardupilot
+from jamz_autopilot.flight.navigation.flight_event import FlightEvent
+from jamz_autopilot.core.core import Core
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
