@@ -1,8 +1,8 @@
 import asyncio
 
-from translation import Ardupilot
-from flight_event import FlightEvent
-from jamz_autopilot.core import Core
+from jamz_autopilot.flight.navigation.translation.ardupilot import Ardupilot
+from jamz_autopilot.flight.navigation.flight_event import FlightEvent
+from jamz_autopilot.core.core import Core
 
 # Controller holds instance of link interface
 # Controller manages all flight variables and pass commands to 
@@ -30,7 +30,7 @@ class FlightController:
         Core.get_instance().on_flight_event(FlightEvent(self))
 
     # TODO: Create unit test
-    def main_loop(self):
+    async def main_loop(self):
         if len(self.commands) == 0:
             # Case: All commands have been executed
             await asyncio.sleep(0.5)
