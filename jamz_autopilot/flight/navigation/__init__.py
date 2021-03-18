@@ -1,2 +1,2 @@
-from jamz_autopilot.flight.navigation.flight_controller import FlightController
-from jamz_autopilot.flight.navigation.flight_event import FlightEvent
+from .flight_controller import FlightController
+from .flight_event import FlightEvent

@@ -3,15 +3,15 @@ import math
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 
 from .link_interface import LinkInterface
-from . import flight_status
+from .flight_status import FlightStatus
 from ..command import Command
 
 # TODO Ismail, Zak unit tests
 class Ardupilot(LinkInterface):
     # Create pre-defined flight status objects
-    STATUS_IDLE = flight_status(0)
-    STATUS_DONE_COMMAND = flight_status(1)
-    STATUS_EXECUTING_COMMAND = flight_status(2)
+    STATUS_IDLE = FlightStatus(0)
+    STATUS_DONE_COMMAND = FlightStatus(1)
+    STATUS_EXECUTING_COMMAND = FlightStatus(2)
 
     # Define drone ground speed in m/s.
     GROUND_SPEED = 1

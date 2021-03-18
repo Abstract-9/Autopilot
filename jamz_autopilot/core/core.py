@@ -92,5 +92,6 @@ async def main():
     #     loop.close()
 
 
-# Python 3.7+
-asyncio.run(main())
+# Python 3.7+, only run if this is the main interpreter
+if __name__ == "__main__":
+    asyncio.run(main())
