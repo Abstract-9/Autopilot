@@ -1,0 +1,12 @@
+build-job:
+  stage: build
+  script:
+    - echo "building..."
+    - echo "setting up drone-kit"
+
+test:
+  stage: test
+  script:
+    - echo "starting unit tests!"
+
+
