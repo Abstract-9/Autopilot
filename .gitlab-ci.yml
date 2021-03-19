@@ -8,7 +8,7 @@ test:
   stage: test
   script:
     - echo "starting unit tests!"
-    - python -m unittest discover <test/flight/navigation/translation>
-    - python -m unittest discover <test/flight/navigation>
-    - python -m unittest discover <test/communications>
+    - python -m unittest test/flight/navigation/translation/*
+    - python -m unittest test/flight/navigation/*
+    - python -m unittest test/communications/*
 
