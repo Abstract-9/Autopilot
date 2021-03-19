@@ -8,5 +8,5 @@ test:
   stage: test
   script:
     - echo "starting unit tests!"
-
+    - python -m unittest test/*
 
