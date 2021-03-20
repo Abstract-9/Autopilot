@@ -8,6 +8,6 @@ test:
   stage: test
   script:
     - echo "starting unit tests!"
-    - python -m unittest test/flight/navigation/translation/flight_status_tests.py
+    - python -m unittest test/communications/*
    
 
