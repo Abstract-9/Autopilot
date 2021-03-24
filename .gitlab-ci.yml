@@ -14,7 +14,7 @@ pylint:
   stage: Analysis
   allow_failure: true
   script:
-   - pylint jamz_autopilot
+   - pylint -m communications.py
 test:
   stage: Test
   script:
