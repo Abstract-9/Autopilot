@@ -9,20 +9,20 @@ before_script:
 
 
 build-job:
-  image: python:3.6
+  
   stage: Build
   script:
     - echo "building..."
     - echo "setting up drone-kit"
 
 pylint:
-  image: python:3.6
+  
   stage: Analysis
   allow_failure: true
   script:
-   - pylint communications.py
+   - pylint
 test:
-  image: python:3.6
+  
   stage: Test
   script:
     - echo "starting unit tests!"
