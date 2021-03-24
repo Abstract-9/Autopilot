@@ -26,6 +26,6 @@ test:
   stage: Test
   script:
     - echo "starting unit tests!"
-    - python unittest test/communications/kafka_Tests.py
+    - python -m unittest test/communications/*
    
 
