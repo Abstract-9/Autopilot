@@ -1,5 +1,11 @@
+stages:
+  - Analysis
+  - Test
+  - Build
+
+
 build-job:
-  stage: build
+  stage: Build
   script:
     - echo "building..."
     - echo "setting up drone-kit"
@@ -10,7 +16,7 @@ pylint:
   script:
    - pylint *.py **/*.py
 test:
-  stage: test
+  stage: Test
   script:
     - echo "starting unit tests!"
     - python -m unittest test/communications/*
