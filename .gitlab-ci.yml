@@ -3,6 +3,10 @@ stages:
   - Build
   - Test
 
+  before_script:
+  - python --version
+  - pip install pylint
+
 
 build-job:
   stage: Build
