@@ -4,6 +4,11 @@ build-job:
     - echo "building..."
     - echo "setting up drone-kit"
 
+pylint:
+  stage: Analysis
+  allow_failure: true
+  script:
+   - pylint *.py **/*.py
 test:
   stage: test
   script:
