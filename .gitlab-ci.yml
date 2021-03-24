@@ -3,7 +3,7 @@ stages:
   - Build
   - Test
 
-  before_script:
+before_script:
   - python --version
   - pip install pylint
 
