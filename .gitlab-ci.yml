@@ -14,7 +14,7 @@ pylint:
   stage: Analysis
   allow_failure: true
   script:
-   - pylint -m communications.py
+   - pylint communications.py
 test:
   stage: Test
   script:
