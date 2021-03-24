@@ -20,12 +20,12 @@ pylint:
   stage: Analysis
   allow_failure: true
   script:
-   - pylint
+   - pylint jamz_autopilot
 test:
   
   stage: Test
   script:
     - echo "starting unit tests!"
-    - python unittest test/communications/*
+    - python -m unittest test/*
    
 
