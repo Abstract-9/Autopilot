@@ -1,7 +1,7 @@
 stages:
   - Analysis
-  - Test
   - Build
+  - Test
 
 
 build-job:
@@ -14,7 +14,7 @@ pylint:
   stage: Analysis
   allow_failure: true
   script:
-   - pylint *.py **/*.py
+   - pylint jamz_autopilot
 test:
   stage: Test
   script:
