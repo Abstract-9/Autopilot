@@ -1,1 +1,1 @@
-from .KafkaTests import KafkaTests
+from .kafkaTests import kafkaTests
