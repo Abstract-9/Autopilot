@@ -26,6 +26,6 @@ test:
   stage: Test
   script:
     - echo "starting unit tests!"
-    - python -m unittest test/communications/*
+    - python -m unittest test/communications/communications_tests.py
    
 
