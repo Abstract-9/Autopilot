@@ -39,7 +39,7 @@ class FlightControllerTest(aiounittest.AsyncTestCase):
         # test that asyncio.get_event_loop().call_later(0.5, self.main_loop) is called
         controller = FlightController()
         t0 = time.time()
-        controller.main_loop()
+        controller.command_loop()
         t1 = time.time()
         self.assertGreaterEqual(t1-t0, 0.5, "FlightController.main_loop is not successfully sleeping when its commands array is empty") # not 100% sure of this
 
@@ -47,7 +47,7 @@ class FlightControllerTest(aiounittest.AsyncTestCase):
         controller.commands.append(cmd)
 
         try:
-            controller.main_loop()
+            controller.command_loop()
             self.assertTrue(controller.operation_lock.locked())
             self.assertEqual(controller.commands, [])
         except Exception as e:

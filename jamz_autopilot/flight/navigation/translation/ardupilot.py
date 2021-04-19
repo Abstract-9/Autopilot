@@ -169,8 +169,11 @@ class Ardupilot(LinkInterface):
     # This section stores methods for accessing various information from the flight controller
 
     # TODO: Create unit test
-    def get_status(self):
+    def get_heartbeat_status(self):
         return {
+            "lat": self.drone.location.global_relative_frame.lat,
+            "lon": self.drone.location.global_relative_frame.lon,
+            "alt": self.drone.location.global_relative_frame.alt,
             "GPS": self.drone.gps_0,
             "Battery": self.drone.battery,
             "Last Heartbeat": self.drone.last_heartbeat,

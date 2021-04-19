@@ -16,11 +16,8 @@ class Communications:
     topic = "DRONE_" + id
 
     def __init__(self, loop, test: bool):
-        # To avoid circular import
-        from ..core import Core
 
-        # Grab config for heartbeat
-        self.config = Core.get_instance().config
+        self.flight_controller = None
 
         # Set up ready event
         self.ready = asyncio.locks.Event(loop=loop)
@@ -30,8 +27,6 @@ class Communications:
 
         # Manage the topic info. The drones topic is based on its MAC address to ensure its unique.
         self.loop = loop
-        self.event = CommandEvent()
-        Core.get_instance().on_comms_event(self.event)
         loop.create_task(self._initialize())
 
     # Now for the async initialization
@@ -58,23 +53,16 @@ class Communications:
         self.loop.create_task(self.poll_commands())
 
     def send_status(self):
-        config = self.config
-        self.producer.produce(self.topic, key="status", value=json.dumps({
-            "lat": config['lat'],
-            "lon": config['lon'],
-            "alt": config['alt'],
-            "battery": config['battery'],
-        }))
+        if self.flight_controller is not None:
+            status = self.flight_controller.translator.get_heartbeat_status()
+            self.producer.produce(self.topic, key="status", value=json.dumps(status))
         self.loop.call_later(1, self.send_status)
         # TODO implement delivery ack logic
 
     async def poll_commands(self):
         message = self.consumer.poll(1)
         if message is not None:
-            while self.event.is_set():
-                await asyncio.sleep(0.5)
-            self.event.command = json.loads(message.value().decode("ascii"))
-            self.event.set()
+            await self.flight_controller.push_command(json.loads(message.value().decode("ascii")))
         self.loop.create_task(self.poll_commands())
 
     # This is used to check if the drone's topic exists in our kafka cluster
@@ -101,11 +89,3 @@ class Communications:
         del self.client
         del self.producer
         self.consumer.close()
-
-
-class CommandEvent(asyncio.Event):
-
-    # TODO: Create unit test
-    def __init__(self):
-        super(CommandEvent, self).__init__()
-        self.command = None
