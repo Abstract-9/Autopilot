@@ -1,14 +1,15 @@
-from confluent_kafka import Producer
+from confluent_kafka import Consumer
 
 
 # TODO Jonathan Unit tests
-class KafkaProducer(Producer):
+class KafkaConsumer(Consumer):
 
     # TODO: Create unit test
-    def __init__(self, drone_id, bootstrap_servers):
+    def __init__(self, bootstrap_servers):
         super().__init__({
             'bootstrap.servers': bootstrap_servers,
             'client.id': '1',
+            'group.id': "Drones",
             'broker.address.family': 'v4',
             'broker.address.ttl': 1
         })

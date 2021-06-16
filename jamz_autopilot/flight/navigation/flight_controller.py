@@ -14,27 +14,69 @@ class FlightController:
 
     # How to connect to the hardware flight controller. Some examples;
     # "/dev/ttyACM0" Serial interface over USB
-    # "tcp://127.0.0.1:6603" Local TCP connection
-    # "udp://127.0.0.1:5202" Local UDP connection
-    device = "/dev/ttyACM0"
+    # "tcp:127.0.0.1:6603" Local TCP connection
+    # "udp:127.0.0.1:5202" Local UDP connection
+    device = "tcp:localhost:5760"
+
+    # Some constants for state management
+
+    STATE_IDLE = 0
+    STATE_IN_FLIGHT = 1
+    STATE_IN_PICKUP = 2
+    STATE_IN_DELIVERY = 3
 
     def __init__(self, device=None):
 
-        self._commands = []
-        self.current_command = None
+        # Variables for flight management
+        self._messages = []
+        self.state = self.STATE_IDLE
+        self.has_bay_clearance = False
+        self.on_job = False
+        self.whole_job = None
+        self.current_job_part = None
+        self.bay_id = None
+        self.destination = None
+
+        # Use custom connection string if supplied
         if device:
             self.device = device
 
         # Initialize synchronization primitives
         self.commands_lock = asyncio.Lock()
         self.operation_lock = asyncio.Lock()
+        self.messages_lock = asyncio.Lock()
 
         # Initialize hardware translator
         self.translator = Ardupilot(self.device)
 
-        asyncio.get_event_loop().create_task(self.command_loop())
+        asyncio.create_task(self.main_loop())
 
-    async def command_loop(self):
+    # Genuinely, the thick of the logic.
+    # Handle how to fly.
+    async def main_loop(self):
+        if self.on_job:
+            current_part = self.whole_job[self.current_job_part]
+            if self.state == self.STATE_IN_FLIGHT:
+                flight_status = await self.translator.ensure_goto()
+                if flight_status == self.translator.STATUS_DONE_COMMAND:
+                    if current_part.type == "pickup":
+                        self.state = self.STATE_IN_PICKUP
+                        await self.handle_pickup()
+                    else:
+                        self.state = self.STATE_IN_DELIVERY
+                        await self.handle_delivery()
+            elif self.state == self.STATE_IN_PICKUP:
+                await self.handle_pickup()
+            elif self.state == self.STATE_IN_DELIVERY:
+                await self.handle_delivery()
+        else:
+            # If we're not on job, we're either idle or flying home
+            if self.state == self.STATE_IN_FLIGHT:
+                flight_status = self.translator.ensure_goto()
+                if flight_status == self.translator.STATUS_DONE_COMMAND:
+
+
+
         if len(self._commands) == 0:
             # Case: All commands have been executed
             await asyncio.sleep(0.5)
@@ -53,7 +95,7 @@ class FlightController:
 
         # Schedule callback
         await asyncio.sleep(0.5)
-        asyncio.get_event_loop().create_task(self.command_loop())
+        asyncio.create_task(self.main_loop())
 
     async def push_command(self, command):
         await self.commands_lock.acquire()
@@ -65,3 +107,12 @@ class FlightController:
         command = self._commands.pop()
         self.commands_lock.release()
         return command
+
+    async def handle_delivery(self):
+        # TODO
+        pass
+
+    async def handle_pickup(self):
+        # TODO
+        pass
+

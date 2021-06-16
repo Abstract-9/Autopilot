@@ -1,1 +1,2 @@
-from .communications import CommandEvent, Communications
+from .kafka.communications import Communications
+from .coap.client import Client

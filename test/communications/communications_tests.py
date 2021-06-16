@@ -1,4 +1,4 @@
-from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest import IsolatedAsyncioTestCase
 import uuid
 import asyncio
 import json
@@ -6,7 +6,7 @@ import random
 
 from confluent_kafka import TopicPartition, OFFSET_END
 
-from jamz_autopilot.communications.communications import Communications, KafkaConsumer, KafkaProducer, CommandEvent
+from jamz_autopilot.communications.kafka.communications import Communications, KafkaConsumer, KafkaProducer, CommandEvent
 
 
 class CommunicationsTest(IsolatedAsyncioTestCase):

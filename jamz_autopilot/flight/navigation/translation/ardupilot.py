@@ -9,9 +9,9 @@ from ..command import Command
 # TODO Ismail, Zak unit tests
 class Ardupilot(LinkInterface):
     # Create pre-defined flight status objects
-    STATUS_IDLE = FlightStatus(0)
-    STATUS_DONE_COMMAND = FlightStatus(1)
-    STATUS_EXECUTING_COMMAND = FlightStatus(2)
+    STATUS_IDLE = 0
+    STATUS_DONE_COMMAND = 1
+    STATUS_EXECUTING_COMMAND = 2
 
     # Define drone ground speed in m/s.
     GROUND_SPEED = 1
@@ -108,25 +108,21 @@ class Ardupilot(LinkInterface):
         #     time.sleep(2)
 
     # Ensures that the drone continues to its destination.
-    async def ensure_goto(self):
+    async def ensure_goto(self) -> int:
         current_location = self.drone.location.global_relative_frame
         target_distance = get_distance_metres(current_location, self.target_location)
 
         await asyncio.sleep(0.25)
         remaining_distance = get_distance_metres(self.drone.location.global_frame, self.target_location)
         print("GOTO: Remaining Distance: {}".format(remaining_distance))
-        if remaining_distance < target_distance:  # If this is true, goto is working.
-            return remaining_distance
-
         # We will need a better method of determining arrival, maybe combine airspeed check?
         # TODO: Yes, lets do that. implement a vector transform to get absolute velocity.
-        elif remaining_distance < 0.75:
+        if remaining_distance < 0.75:
             self.status = self.STATUS_DONE_COMMAND
-            return self.status
-
         # Ensure goto
-        else:
+        elif target_distance - remaining_distance < 0.5:
             self.drone.simple_goto(self.target_location)
+        return self.status
 
     async def descend(self, command):
         self.status = self.STATUS_EXECUTING_COMMAND
@@ -174,12 +170,12 @@ class Ardupilot(LinkInterface):
             "lat": self.drone.location.global_relative_frame.lat,
             "lon": self.drone.location.global_relative_frame.lon,
             "alt": self.drone.location.global_relative_frame.alt,
-            "GPS": self.drone.gps_0,
-            "Battery": self.drone.battery,
+            "GPS": vars(self.drone.gps_0),
+            "Battery": vars(self.drone.battery),
             "Last Heartbeat": self.drone.last_heartbeat,
             "Armable": self.drone.is_armable,
             "Status": self.drone.system_status.state,
-            "Mode": self.drone.mode,
+            "Mode": self.drone.mode.name,
             "Altitude": self.drone.location.global_relative_frame.alt
         }
 
