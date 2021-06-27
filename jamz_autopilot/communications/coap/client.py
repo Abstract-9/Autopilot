@@ -5,8 +5,6 @@ import asyncio
 import uuid
 import json
 
-from app import App
-
 
 class Client:
 
@@ -15,6 +13,8 @@ class Client:
     log = logging.getLogger(__name__)
 
     def __init__(self):
+        from app import App
+
         self.flight_controller = None
         self.client = None
         self.outgoing_messages = []
@@ -34,16 +34,16 @@ class Client:
         if self.flight_controller is not None:
             # Grab flight status
             status = self.flight_controller.translator.get_heartbeat_status()
-            response = {"status": status, "messages": []}
+            request = {"status": status, "messages": []}
 
             # Handle outgoing messages
             while len(self.outgoing_messages) > 0:
-                response["messages"].append(self.outgoing_messages.pop())
-            if len(response["messages"]) == 0:
-                response.pop("messages")
+                request["messages"].append(self.outgoing_messages.pop())
+            if len(request["messages"]) == 0:
+                request.pop("messages")
 
             # Construct and send request
-            message = Message(code=Code.PUT, uri=self.request_uri, payload=json.dumps(status))
+            message = Message(code=Code.PUT, uri=self.request_uri, payload=json.dumps(request))
             response = await self.client.request(message).response
 
             # Handle Response
@@ -53,10 +53,9 @@ class Client:
             elif response.code == Code.CONTENT:
                 self.log.info("Received messages from Drone Manager")
                 content = json.loads(response.payload)
-                asyncio.run_coroutine_threadsafe(self.flight_controller.handle_messages(content.messages),
-                                                 App.flight_con_event_loop)
+                asyncio.create_task(self.flight_controller.handle_messages(content.messages))
             elif response.code != Code.VALID:
-                self.log.debug("Received unknown response from drone manager: " + response.code)
+                self.log.debug("Received unknown response from Drone Manager: " + response.code)
 
             await asyncio.sleep(1)
             asyncio.create_task(self.status_loop())

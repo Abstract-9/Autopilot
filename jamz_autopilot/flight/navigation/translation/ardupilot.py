@@ -48,7 +48,7 @@ class Ardupilot(LinkInterface):
     ################# FLIGHT SECTION #################
     # This section contains the methods for piloting the drone
 
-    async def ascend(self, command):
+    async def ascend(self, alt):
         self.status = self.STATUS_EXECUTING_COMMAND
 
         # Can't take off without arming
@@ -57,14 +57,13 @@ class Ardupilot(LinkInterface):
         # Ready to go!
         print("Taking off!")
 
-        self.altitude = command.alt
+        self.altitude = alt
         # Make sure takeoff happens
-        self.drone.simple_takeoff(command.alt)
+        self.drone.simple_takeoff(alt)
         while self.drone.mode.name != "GUIDED":
             print("Taking off | Vehicle mode: {}".format(self.drone.mode.name))
             self.drone.mode = VehicleMode("GUIDED")
-            self.drone.simple_takeoff(command.alt)
-        command.wasExecuted = True
+            self.drone.simple_takeoff(alt)
         await self.ensure_ascend()
         # while True:
         #     print(" Altitude: ", self.drone.location.global_relative_frame.alt)
@@ -91,13 +90,12 @@ class Ardupilot(LinkInterface):
         else:
             self.drone.simple_takeoff(self.altitude)
 
-    async def goto(self, command):
+    async def goto(self, geometry):
         self.status = self.STATUS_EXECUTING_COMMAND
 
-        self.target_location = LocationGlobalRelative(command.lat, command.lon, command.alt)
+        self.target_location = LocationGlobalRelative(geometry.lat, geometry.lon, geometry.alt)
         self.drone.simple_goto(self.target_location)
 
-        command.wasExecuted = True
         await self.ensure_goto()
         # while self.drone.mode.name == "GUIDED":  # Stop action if we are no longer in guided mode.
         #     remaining_distance = get_distance_metres(self.drone.location.global_frame, target_location)
@@ -124,19 +122,18 @@ class Ardupilot(LinkInterface):
             self.drone.simple_goto(self.target_location)
         return self.status
 
-    async def descend(self, command):
+    async def land(self):
         self.status = self.STATUS_EXECUTING_COMMAND
-        self.drone.mode = VehicleMode("descend")
-        command.wasExecuted = True
-        await self.ensure_descend()
+        self.drone.mode = VehicleMode("LAND")
+        await self.ensure_land()
 
-    async def ensure_descend(self):
-        if self.drone.mode.name == "descend":
-            if self.drone.velocity[2] < 0.05:  # It's not moving, so we've descended
+    async def ensure_land(self):
+        if self.drone.mode.name == "LAND":
+            if self.drone.velocity[2] < 0.05:  # It's not moving, so we've landed
                 self.status = self.STATUS_DONE_COMMAND
                 return self.status
         else:
-            self.drone.mode = VehicleMode("descend")
+            self.drone.mode = VehicleMode("LAND")
 
     # TODO: Create unit test
     # Command mapping.
@@ -145,7 +142,7 @@ class Ardupilot(LinkInterface):
         command_bindings = {
             Command.GOTO: [self.goto, self.ensure_goto],
             Command.ASCEND: [self.ascend, self.ensure_ascend],
-            Command.DESCEND: [self.descend, self.ensure_descend],
+            Command.DESCEND: [self.descend, self.ensure_land],
             Command.RTL: self.return_home
         }
 
