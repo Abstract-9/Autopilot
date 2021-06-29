@@ -9,10 +9,13 @@ class MessageBroker:
         self.incoming_messages = []
         self.waiting_on_bay_access = False
         self.waiting_on_path_proposal = False
+        self.waiting_on_bay_assignment = False
         self.bay_cleared = False
         
         self.outgoing_messages_lock = asyncio.Lock()
         self.incoming_messages_lock = asyncio.Lock()
+
+        self.app = App
     
     # Message format:
     # {
@@ -27,14 +30,7 @@ class MessageBroker:
         self.incoming_messages_lock.release()
     
     async def send_message(self, message):
-        # Deal With internal states
-        if message["eventType"] == "AccessRequest":
-            self.waiting_on_bay_access = True
-            self.bay_cleared = False
-        elif message["eventType"] == "PathProposal":
-            self.waiting_on_path_proposal = True
-        # Send out message
-        asyncio.create_task(App.comms.append_outgoing(message))
+        asyncio.create_task(self.app.comms.append_outgoing(message))
         
     async def get_message_by_event_type(self, event_type) -> dict:
         await self.incoming_messages_lock.acquire()
@@ -47,6 +43,8 @@ class MessageBroker:
                     self.waiting_on_bay_access = False
                 elif message["eventType"] == "PathAssignment":
                     self.waiting_on_path_proposal = False
+                elif message["eventType"] == "BayAssignment":
+                    self.waiting_on_bay_assignment = False
 
                 # Return Message
                 self.incoming_messages_lock.release()
@@ -60,14 +58,18 @@ class MessageBroker:
             await self.send_message(self.generate_bay_cleared())
             self.bay_cleared = True
 
-    @staticmethod
-    def generate_access_request(bay_id):
+    def generate_access_request(self, bay_id) -> str:
+        self.waiting_on_bay_access = True
         return json.dumps({"eventType": "AccessRequest", "bay_id": bay_id})
-    
-    @staticmethod
-    def generate_path_proposal(start, end):
+
+    def generate_path_proposal(self, start, end) -> str:
+        self.waiting_on_path_proposal = True
         return json.dumps({"eventType": "PathProposal", "start": start, "end": end})
 
+    def generate_assignment_request(self, location: dict) -> str:
+        self.waiting_on_bay_assignment = True
+        return json.dumps({"eventType": "AssignmentRequest", "geometry": location})
+
     @staticmethod
-    def generate_bay_cleared():
+    def generate_bay_cleared() -> str:
         return json.dumps({"eventType": "AccessComplete"})

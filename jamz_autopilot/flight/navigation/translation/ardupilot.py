@@ -135,29 +135,6 @@ class Ardupilot(LinkInterface):
         else:
             self.drone.mode = VehicleMode("LAND")
 
-    # TODO: Create unit test
-    # Command mapping.
-    async def execute_command(self, command, operation_lock):
-        # Command bindings
-        command_bindings = {
-            Command.GOTO: [self.goto, self.ensure_goto],
-            Command.ASCEND: [self.ascend, self.ensure_ascend],
-            Command.DESCEND: [self.descend, self.ensure_land],
-            Command.RTL: self.return_home
-        }
-
-        if not command.wasExecuted:
-            await command_bindings[command.command][0](command)
-        else:
-            await command_bindings[command.command][1]()
-
-        if self.status == self.STATUS_DONE_COMMAND:
-            operation_lock.release()
-        else:
-            loop = asyncio.get_event_loop()
-            await asyncio.sleep(0.5)
-            loop.create_task(self.execute_command(command, operation_lock))
-
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
 
