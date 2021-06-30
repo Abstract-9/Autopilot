@@ -148,7 +148,7 @@ class Ardupilot(LinkInterface):
             "Battery": vars(self.drone.battery),
             "Last Heartbeat": self.drone.last_heartbeat,
             "Armable": self.drone.is_armable,
-            "Status": self.drone.system_status.state,
+            "Drone_FC_Status": self.drone.system_status.state,
             "Mode": self.drone.mode.name,
             "Altitude": self.drone.location.global_relative_frame.alt
         }

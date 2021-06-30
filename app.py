@@ -10,9 +10,8 @@ class App:
 
     def __init__(self):
 
-        Client()
-        FlightController()
-
+        self.comms = Client(self)
+        self.flight_con = FlightController(self)
         # try:
         #     while(1):
         #         loop.run_until_complete(core.onFlightEvent())
@@ -25,8 +24,8 @@ class App:
 
 async def _main():
     App()
-    asyncio.get_event_loop().run_forever()
 
 # Python 3.7+, only run if this is the main interpreter
 if __name__ == "__main__":
-    asyncio.run(_main())
+    asyncio.ensure_future(_main())
+    asyncio.get_event_loop().run_forever()

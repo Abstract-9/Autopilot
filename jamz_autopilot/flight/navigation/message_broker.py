@@ -3,8 +3,7 @@ import json
 
 class MessageBroker:
     
-    def __init__(self):
-        from app import App
+    def __init__(self, app):
 
         self.incoming_messages = []
         self.waiting_on_bay_access = False
@@ -15,7 +14,7 @@ class MessageBroker:
         self.outgoing_messages_lock = asyncio.Lock()
         self.incoming_messages_lock = asyncio.Lock()
 
-        self.app = App
+        self.app = app
     
     # Message format:
     # {

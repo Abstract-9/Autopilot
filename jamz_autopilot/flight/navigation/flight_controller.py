@@ -31,7 +31,7 @@ class FlightController:
     STATE_IN_PICKUP = 4
     STATE_IN_DELIVERY = 5
 
-    def __init__(self, device=None):
+    def __init__(self, app, device=None):
 
         # Variables for flight management
         self.state = self.STATE_IDLE
@@ -55,7 +55,7 @@ class FlightController:
         self.translator = Ardupilot(self.device)
 
         # Message Broker
-        self.message_broker = MessageBroker()
+        self.message_broker = MessageBroker(app)
 
 
     # For async initialization needs
@@ -210,6 +210,12 @@ class FlightController:
     def check_job_state(self):
         if self.current_job_part >= len(self.whole_job):
             self.on_job = False
+
+    def get_transmittable_status(self):
+        status = self.translator.get_heartbeat_status()
+        status["Flight_Controller_State"] = self.state_as_string()
+        status["Bay"] = self.bay
+        return status
 
     def log_state(self):
         self.logger.info("STATE: " + self.state_as_string())
