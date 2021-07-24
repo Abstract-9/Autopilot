@@ -2,6 +2,7 @@ import asyncio
 from jamz_autopilot.communications import Client
 from jamz_autopilot.flight.navigation import FlightController
 
+import logging
 
 class App:
 
@@ -9,9 +10,11 @@ class App:
     flight_con = None
 
     def __init__(self):
+        logging.basicConfig(level=logging.INFO)
 
         self.comms = Client(self)
         self.flight_con = FlightController(self)
+        self.comms.message_broker = self.flight_con.message_broker
         # try:
         #     while(1):
         #         loop.run_until_complete(core.onFlightEvent())

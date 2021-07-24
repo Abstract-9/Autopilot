@@ -9,12 +9,12 @@ import json
 class Client:
 
     drone_id = hex(uuid.getnode())
-    request_uri = "coap://172.27.240.1:5683/status?drone_id=" + drone_id  # Localhost for testing
+    request_uri = "coap://172.20.64.1:5683/status?drone_id=" + drone_id  # Localhost for testing
     log = logging.getLogger(__name__)
 
     def __init__(self, app):
 
-        self.flight_controller = None
+        self.message_broker = None
         self.client = None
         self.outgoing_messages = []
 
@@ -53,13 +53,14 @@ class Client:
             self.log.error("Received ISR from Drone Manager...")
             pass # TODO some error handling
         elif response.code == Code.CONTENT:
-            self.log.info("Received messages from Drone Manager")
             content = json.loads(response.payload)
-            asyncio.create_task(self.flight_controller.handle_messages(content.messages))
-        elif response.code != Code.VALID:
-            self.log.debug("Received unknown response from Drone Manager: " + response.code)
+            asyncio.create_task(self.message_broker.handle_messages(content['messages']))
+        elif response.code == Code.VALID:
+            self.log.debug("Received ok from Drone Manager")
+        else:
+            self.log.warning("Received unknown response from Drone Manager: " + response.code)
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
         asyncio.create_task(self.status_loop())
 
     # To be called from the flight controller thread

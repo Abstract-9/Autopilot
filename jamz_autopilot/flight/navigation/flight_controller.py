@@ -57,9 +57,15 @@ class FlightController:
         # Message Broker
         self.message_broker = MessageBroker(app)
 
+        asyncio.create_task(self._initialize())
+
 
     # For async initialization needs
     async def _initialize(self):
+        # Wait for the mavlink connection to be active
+        await self.translator.is_ready.wait()
+
+        # Request a landingBay spot
         location = self.translator.get_location()
         while self.bay is None:
             await self.get_bay_assignment(location)
@@ -84,7 +90,8 @@ class FlightController:
             else:
                 job_message = await self.message_broker.get_message_by_event_type("JobAssignment")
                 if job_message is not None:
-                    self.whole_job = job_message["payload"]["job_waypoints"]
+                    self.logger.info("Received Job ")
+                    self.whole_job = job_message["job_waypoints"]
                     self.current_job_part = 0
                     self.on_job = True
 
@@ -99,7 +106,7 @@ class FlightController:
                     elif status > 20:
                         await self.message_broker.ensure_bay_cleared()
                 elif self.translator.status == self.translator.STATUS_IDLE:
-                    await self.translator.ascend(self.current_path["altitude"])
+                    await self.translator.ascend(self.current_path["start"]["alt"])
         elif self.state == self.STATE_LANDING:
             if self.has_bay_clearance:
                 if self.translator.status == self.translator.STATUS_IDLE:
@@ -112,7 +119,7 @@ class FlightController:
                 await self.get_bay_clearance()
         elif self.state == self.STATE_IN_FLIGHT:
             if self.translator.status == self.translator.STATUS_IDLE:
-                await self.translator.goto(self.current_path.start)
+                await self.translator.goto(self.current_path["start"])
             if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
                 status = await self.translator.ensure_goto()
                 if status == self.translator.STATUS_DONE_COMMAND:
@@ -150,7 +157,7 @@ class FlightController:
     # Super important, call this method before setting sub-states!
     def set_state(self, state):
         # Reset state-dependent booleans (sub_states)
-        self.has_bay_clearance = False
+        # self.has_bay_clearance = False
 
         # Set the state
         self.state = state
@@ -166,7 +173,7 @@ class FlightController:
     async def handle_next_path(self):
         # check if we need to send a path proposal
         path_assignment = await self.message_broker.get_message_by_event_type("PathAssignment")
-        if path_assignment == {} and not self.message_broker.waiting_on_path_proposal:
+        if path_assignment is None and not self.message_broker.waiting_on_path_proposal:
             location = self.translator.get_location()
             # check if we're done our job
             self.check_job_state()
@@ -175,34 +182,34 @@ class FlightController:
                 # Check if we need landing bay assignment
                 await self.get_bay_assignment(location)
             elif not self.on_job:
-                destination = {"lat": self.bay["geometry"]["lat"], "lon": self.bay["geometry"]["lon"]}
+                destination = {"lat": self.bay["geometry"]["lat"], "lng": self.bay["geometry"]["lng"]}
             else:
                 current_job_part = self.whole_job[self.current_job_part]
                 destination = \
-                    {"lat": current_job_part["geometry"]["latitude"], "lon": current_job_part["geometry"]["longitude"]}
+                    {"lat": current_job_part["geometry"]["lat"], "lng": current_job_part["geometry"]["lng"]}
 
             if destination is not None:
                 path_proposal = self.message_broker.generate_path_proposal(
-                    {"lat": location["latitude"], "lon": location["longitude"]},
+                    {"lat": location["lat"], "lng": location["lng"]},
                     destination
                 )
                 await self.message_broker.send_message(path_proposal)
-        elif path_assignment != {}:
-            self.current_path = path_assignment["payload"]
+        elif path_assignment is not None:
+            self.current_path = path_assignment
 
     async def get_bay_assignment(self, location):
         bay_assignment = await self.message_broker.get_message_by_event_type("BayAssignment")
-        if bay_assignment == {} and not self.message_broker.waiting_on_bay_assignment:
+        if bay_assignment is None and not self.message_broker.waiting_on_bay_assignment:
             await self.message_broker.send_message(self.message_broker.generate_assignment_request(location))
-        elif bay_assignment != {}:
+        elif bay_assignment is not None:
             self.bay = bay_assignment["bay"]
 
     async def get_bay_clearance(self):
         bay_clearance_granted = await self.message_broker.get_message_by_event_type("AccessGranted")
-        if bay_clearance_granted == {} and not self.message_broker.waiting_on_bay_access:
+        if bay_clearance_granted is None and not self.message_broker.waiting_on_bay_access:
             await self.message_broker.send_message(
                 self.message_broker.generate_access_request(self.bay["id"]))
-        elif bay_clearance_granted != {}:
+        elif bay_clearance_granted is not None:
             # Assign bay clearance, but remove the bay_id since we're leaving
             self.bay = None
             self.has_bay_clearance = True
@@ -215,15 +222,15 @@ class FlightController:
         status = self.translator.get_heartbeat_status()
         status["Flight_Controller_State"] = self.state_as_string()
         status["Bay"] = self.bay
+        status["on_job"] = self.on_job
         return status
 
     def log_state(self):
-        self.logger.info("STATE: " + self.state_as_string())
-        self.logger.info("on_job: " + str(self.on_job))
+        self.logger.debug("STATE: " + self.state_as_string())
+        self.logger.debug("on_job: " + str(self.on_job))
         if self.on_job:
-            self.logger.info("Current Job Part:\n" + str(self.whole_job[self.current_job_part]))
-        self.logger.info("bay: " + str(self.bay))
-        self.logger.info("")
+            self.logger.debug("Current Job Part:\n" + str(self.whole_job[self.current_job_part]))
+        self.logger.debug("bay: " + str(self.bay))
 
     def state_as_string(self) -> str:
         if self.state == self.STATE_IDLE: return "STATE_IDLE"

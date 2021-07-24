@@ -1,10 +1,9 @@
 import asyncio
 import math
+import logging
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 
 from .link_interface import LinkInterface
-from .flight_status import FlightStatus
-from ..command import Command
 
 # TODO Ismail, Zak unit tests
 class Ardupilot(LinkInterface):
@@ -17,6 +16,10 @@ class Ardupilot(LinkInterface):
     GROUND_SPEED = 1
     # Define the amount of time that the drone can continue its mission without talking to the controller.
     NETWORK_TIMEOUT = 120  # 120 seconds
+
+    is_ready = asyncio.Event()
+
+    logger = logging.getLogger(__name__)
 
     ################# CONTROL SECTION #################
     # This section contains methods for changing various states in the flight controller
@@ -93,7 +96,7 @@ class Ardupilot(LinkInterface):
     async def goto(self, geometry):
         self.status = self.STATUS_EXECUTING_COMMAND
 
-        self.target_location = LocationGlobalRelative(geometry.lat, geometry.lon, geometry.alt)
+        self.target_location = LocationGlobalRelative(geometry["lat"], geometry["lng"], geometry["alt"])
         self.drone.simple_goto(self.target_location)
 
         await self.ensure_goto()
@@ -142,7 +145,7 @@ class Ardupilot(LinkInterface):
     def get_heartbeat_status(self):
         return {
             "lat": self.drone.location.global_relative_frame.lat,
-            "lon": self.drone.location.global_relative_frame.lon,
+            "lng": self.drone.location.global_relative_frame.lon,
             "alt": self.drone.location.global_relative_frame.alt,
             "GPS": vars(self.drone.gps_0),
             "Battery": vars(self.drone.battery),
@@ -157,7 +160,7 @@ class Ardupilot(LinkInterface):
     def get_location(self):
         return {
             "lat": self.drone.location.global_relative_frame.lat,
-            "lon": self.drone.location.global_relative_frame.lon,
+            "lng": self.drone.location.global_relative_frame.lon,
             "alt": self.drone.location.global_relative_frame.alt
         }
 
@@ -165,7 +168,7 @@ class Ardupilot(LinkInterface):
     def get_vital_info(self):
         return {
             "lat": self.drone.location.global_relative_frame.lat,
-            "lon": self.drone.location.global_relative_frame.lon,
+            "lng": self.drone.location.global_relative_frame.lon,
             "alt": self.drone.location.global_relative_frame.alt,
             "Battery": self.drone.battery,
         }
@@ -180,7 +183,7 @@ class Ardupilot(LinkInterface):
     # TODO: Create unit test
     def __init__(self, device):
         self.drone = connect(device)
-        print("Drone connected!")
+        self.logger.info("Drone connected!")
         # Variables for controlling network timeout
         self.heartbeat_counter = 0
         self.time_without_network = 0
@@ -199,9 +202,12 @@ class Ardupilot(LinkInterface):
         self.status = self.STATUS_IDLE
         self.home_location = self.drone.home_location
         while self.home_location is None:
+            cmds.download()
+            cmds.wait_ready()
             self.home_location = self.drone.home_location
 
-        print("Ready to go! Home location: %s" % self.home_location)
+        self.logger.info("Ready to go! Home location: %s" % self.home_location)
+        self.is_ready.set()
 
 # The following is utility functions for various calculations
 
