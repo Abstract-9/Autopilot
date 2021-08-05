@@ -16,9 +16,9 @@ class FlightController:
 
     # How to connect to the hardware flight controller. Some examples;
     # "/dev/ttyACM0" Serial interface over USB
-    # "tcp:127.0.0.1:6603" Local TCP connection
+    # "tcp:127.0.0.1:5760" Local TCP connection
     # "udp:127.0.0.1:5202" Local UDP connection
-    device = "tcp:localhost:5760"
+    device = "tcp:172.22.178.64:5760"
 
     logger = logging.getLogger(__name__)
 
@@ -77,82 +77,99 @@ class FlightController:
     # Handle how to fly. Designed as a state machine, with decision trees under each state.
     async def main_loop(self):
         if self.state == self.STATE_IDLE:
-            # IDLE + on_job = waiting to take off
-            if self.on_job:
-                if not self.current_path:
-                    await self.handle_next_path()
-                else:
-                    if not self.has_bay_clearance:
-                        await self.get_bay_clearance()
-                    else:
-                        self.set_state(self.STATE_TAKEOFF)
-
-            else:
-                job_message = await self.message_broker.get_message_by_event_type("JobAssignment")
-                if job_message is not None:
-                    self.logger.info("Received Job ")
-                    self.whole_job = job_message["job_waypoints"]
-                    self.current_job_part = 0
-                    self.on_job = True
-
+           await self.idle_state_actions()
         elif self.state == self.STATE_TAKEOFF:
-            if self.has_bay_clearance:
-                if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-                    status = await self.translator.ensure_ascend()
-                    if status == self.translator.STATUS_DONE_COMMAND:
-                        self.translator.status = self.translator.STATUS_IDLE
-                        self.set_state(self.STATE_IN_FLIGHT)
-                        self.has_bay_clearance = False
-                    elif status > 20:
-                        await self.message_broker.ensure_bay_cleared()
-                elif self.translator.status == self.translator.STATUS_IDLE:
-                    await self.translator.ascend(self.current_path["start"]["alt"])
+            await self.takeoff_state_actions()
         elif self.state == self.STATE_LANDING:
-            if self.has_bay_clearance:
-                if self.translator.status == self.translator.STATUS_IDLE:
-                    await self.translator.land()
-                elif self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-                    await self.translator.ensure_land()
-                if self.translator.status == self.translator.STATUS_DONE_COMMAND:
-                    self.set_state(self.STATE_IDLE)
-            else:
-                await self.get_bay_clearance()
+            await self.landing_actions()
         elif self.state == self.STATE_IN_FLIGHT:
-            if self.translator.status == self.translator.STATUS_IDLE:
-                await self.translator.goto(self.current_path["start"])
-            if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-                status = await self.translator.ensure_goto()
-                if status == self.translator.STATUS_DONE_COMMAND:
-                    self.translator.status = self.translator.STATUS_IDLE
-                    self.current_path = None
-                    if self.on_job:
-                        part_type = self.whole_job[self.current_job_part]["type"]
-                        if part_type == "delivery":
-                            self.set_state(self.STATE_IN_DELIVERY)
-                        else:
-                            self.set_state(self.STATE_IN_PICKUP)
-                    else:
-                        self.set_state(self.STATE_LANDING)
-
+            await self.flight_actions()
         elif self.state == self.STATE_IN_DELIVERY:
-            self.current_job_part += 1
-            await self.handle_next_path()
-            await asyncio.sleep(5)
-            while self.current_path is None:
-                await asyncio.sleep(5)
-            self.set_state(self.STATE_IN_FLIGHT)
+            await self.delivery_actions()
         elif self.state == self.STATE_IN_PICKUP:
-            self.current_job_part += 1
-            await self.handle_next_path()
-            await asyncio.sleep(5)
-            while self.current_path is None:
-                await asyncio.sleep(5)
-            self.set_state(self.STATE_IN_FLIGHT)
+            await self.pickup_actions()
 
         self.log_state()
         # Schedule callback
         await asyncio.sleep(0.5)
         asyncio.create_task(self.main_loop())
+
+    async def idle_state_actions(self):
+        # IDLE + on_job = waiting to take off
+        if self.on_job:
+            if not self.current_path:
+                await self.handle_next_path()
+            else:
+                if not self.has_bay_clearance:
+                    await self.get_bay_clearance()
+                else:
+                    self.set_state(self.STATE_TAKEOFF)
+        else:
+            job_message = await self.message_broker.get_message_by_event_type("JobAssignment")
+            if job_message is not None:
+                self.logger.info("Received Job ")
+                self.whole_job = job_message["job_waypoints"]
+                self.current_job_part = 0
+                self.on_job = True
+
+    async def takeoff_state_actions(self):
+        if self.has_bay_clearance:
+            if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
+                status = await self.translator.ensure_ascend()
+                if status is None:
+                    pass
+                elif status == self.translator.STATUS_DONE_COMMAND:
+                    self.set_state(self.STATE_IN_FLIGHT)
+                    self.has_bay_clearance = False
+                elif status > 20:
+                    await self.message_broker.ensure_bay_cleared(self.bay["id"])
+            elif self.translator.status == self.translator.STATUS_IDLE:
+                await self.translator.ascend(self.current_path["start"]["alt"])
+
+    async def landing_actions(self):
+        if self.has_bay_clearance:
+            if self.translator.status == self.translator.STATUS_IDLE:
+                await self.translator.land()
+            elif self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
+                await self.translator.ensure_land()
+            if self.translator.status == self.translator.STATUS_DONE_COMMAND:
+                self.set_state(self.STATE_IDLE)
+        else:
+            await self.get_bay_clearance()
+
+    async def flight_actions(self):
+        if self.translator.status == self.translator.STATUS_IDLE or \
+                self.translator.status == self.translator.STATUS_DONE_COMMAND:
+            await self.translator.goto(self.current_path["start"])
+        if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
+            status = await self.translator.ensure_goto()
+            if status == self.translator.STATUS_DONE_COMMAND:
+                self.translator.status = self.translator.STATUS_IDLE
+                self.current_path = None
+                if self.on_job:
+                    part_type = self.whole_job[self.current_job_part]["type"]
+                    if part_type == "delivery":
+                        self.set_state(self.STATE_IN_DELIVERY)
+                    else:
+                        self.set_state(self.STATE_IN_PICKUP)
+                else:
+                    self.set_state(self.STATE_LANDING)
+
+    async def delivery_actions(self):
+        self.current_job_part += 1
+        await self.handle_next_path()
+        await asyncio.sleep(5)
+        while self.current_path is None:
+            await asyncio.sleep(5)
+        self.set_state(self.STATE_IN_FLIGHT)
+
+    async def pickup_actions(self):
+        self.current_job_part += 1
+        await self.handle_next_path()
+        await asyncio.sleep(5)
+        while self.current_path is None:
+            await asyncio.sleep(5)
+        self.set_state(self.STATE_IN_FLIGHT)
 
     # Super important, call this method before setting sub-states!
     def set_state(self, state):
@@ -162,13 +179,6 @@ class FlightController:
         # Set the state
         self.state = state
 
-    async def handle_delivery(self):
-        # TODO
-        pass
-
-    async def handle_pickup(self):
-        # TODO
-        pass
 
     async def handle_next_path(self):
         # check if we need to send a path proposal
