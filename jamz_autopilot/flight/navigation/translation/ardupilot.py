@@ -1,6 +1,7 @@
 import asyncio
 import math
 import logging
+from mavsdk import System
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 
 from .link_interface import LinkInterface
@@ -142,72 +143,79 @@ class Ardupilot(LinkInterface):
     # This section stores methods for accessing various information from the flight controller
 
     # TODO: Create unit test
-    def get_heartbeat_status(self):
-        return {
-            "lat": self.drone.location.global_relative_frame.lat,
-            "lng": self.drone.location.global_relative_frame.lon,
-            "alt": self.drone.location.global_relative_frame.alt,
-            "GPS": vars(self.drone.gps_0),
-            "Battery": vars(self.drone.battery),
-            "Last Heartbeat": self.drone.last_heartbeat,
-            "Armable": self.drone.is_armable,
-            "Drone_FC_Status": self.drone.system_status.state,
-            "Mode": self.drone.mode.name,
-            "Altitude": self.drone.location.global_relative_frame.alt
-        }
+    async def get_heartbeat_status(self):
+        return self.get_location().update({
+            "Mode": self.flight_mode,
+            "Battery": self.battery.remaining_percent
+        })
 
     # TODO: Create unit test
     def get_location(self):
         return {
-            "lat": self.drone.location.global_relative_frame.lat,
-            "lng": self.drone.location.global_relative_frame.lon,
-            "alt": self.drone.location.global_relative_frame.alt
+            "lat": self.location.latitude_deg,
+            "lng": self.location.longitude_deg,
+            "alt": self.location.absolute_altitude_m
         }
 
-    # TODO: Create unit test
-    def get_vital_info(self):
-        return {
-            "lat": self.drone.location.global_relative_frame.lat,
-            "lng": self.drone.location.global_relative_frame.lon,
-            "alt": self.drone.location.global_relative_frame.alt,
-            "Battery": self.drone.battery,
-        }
+    # The following methods are used to subscribe to various drone status updates
+
+    async def sub_battery(self):
+        async for battery in self.drone.telemetry.battery():
+            self.battery = battery.remaining_percent
+
+    async def sub_location(self):
+        async for location in self.drone.telemetry.position():
+            self.location = location
+
+    async def sub_flight_mode(self):
+        async for mode in self.drone.telemetry.flight_mode():
+            self.flight_mode = mode.name
 
     ################# Utility section #################
     # This section contains various utility and I/O methods
 
-    # TODO: Create unit test
-    def close_connection(self):
-        self.drone.close()
-
-    # TODO: Create unit test
     def __init__(self, device):
-        self.drone = connect(device)
-        self.logger.info("Drone connected!")
-        # Variables for controlling network timeout
-        self.heartbeat_counter = 0
-        self.time_without_network = 0
-        # Wait for flight controller to be ready
-        self.drone.wait_ready()
-        cmds = self.drone.commands
-        cmds.download()
-        cmds.wait_ready()
+        self.drone = System()
+        self.battery = None
+        self.location = None
+        self.flight_mode = None
 
-        # Setup initial flight params
-        self.drone.groundspeed = self.GROUND_SPEED
+        asyncio.create_task(self._initialize(device))
+
+    # For async initialization needs
+    async def _initialize(self, device):
+        await self.drone.connect(device)
+
+        self.logger.info("Waiting for drone to connect...")
+        async for state in self.drone.core.connection_state():
+            if state.is_connected:
+                print(f"Drone discovered!")
+                break
+
+        self.logger.info("Waiting for drone to have a global position estimate...")
+        async for health in self.drone.telemetry.health():
+            if health.is_global_position_ok:
+                print("Global position estimate ok")
+                break
+
+        self.logger.info("Retrieving home location...")
+        async for home in self.drone.telemetry.home():
+            self.home_location = home
+            break
 
         # Variables for controlling flight
         self.altitude = 0
         self.target_location = None
         self.status = self.STATUS_IDLE
-        self.home_location = self.drone.home_location
-        while self.home_location is None:
-            cmds.download()
-            cmds.wait_ready()
-            self.home_location = self.drone.home_location
 
-        self.logger.info("Ready to go! Home location: %s" % self.home_location)
+        # Subscribe to necessary info feeds
+        asyncio.create_task(self.sub_battery())
+        asyncio.create_task(self.sub_location())
+
+        self.logger.info("MAVSdk initialization complete! Home location: %s" % self.home_location)
         self.is_ready.set()
+
+
 
 # The following is utility functions for various calculations
 
