@@ -7,7 +7,7 @@ from dronekit import connect, VehicleMode, LocationGlobalRelative
 from .link_interface import LinkInterface
 
 # TODO Ismail, Zak unit tests
-class Ardupilot(LinkInterface):
+class MavLink(LinkInterface):
     # Create pre-defined flight status objects
     STATUS_IDLE = 0
     STATUS_DONE_COMMAND = 1
@@ -179,6 +179,7 @@ class Ardupilot(LinkInterface):
         self.battery = None
         self.location = None
         self.flight_mode = None
+        self.home_location = None
 
         asyncio.create_task(self._initialize(device))
 

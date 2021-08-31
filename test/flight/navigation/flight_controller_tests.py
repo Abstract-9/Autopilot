@@ -5,7 +5,7 @@ from unittest.mock import Mock, MagicMock, patch
 import time
 
 from jamz_autopilot.flight.navigation.flight_controller import FlightController
-from jamz_autopilot.flight.navigation.translation.ardupilot import Ardupilot
+from jamz_autopilot.flight.navigation.translation.mavlink import MavLink
 from jamz_autopilot.flight.navigation.command import Command
 
 
@@ -19,7 +19,7 @@ class FlightControllerTest(aiounittest.AsyncTestCase):
         self.assertEqual(controller.current_command, None,
                          "Failed to create current_command as part of flight_controller")
         self.assertEqual(controller.commands, [], "Failed to create commands list as part of flight_controller")
-        self.assertEqual(controller.translator, Ardupilot(controller.device), "Failed to create Ardupilot(for "
+        self.assertEqual(controller.translator, MavLink(controller.device), "Failed to create Ardupilot(for "
                                                                               "flight_controller.translator) "
                                                                               "with given device in controller")
         #test that Core.get_instance().on_flight_event(FlightEvent(self)) is called

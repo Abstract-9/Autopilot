@@ -2,7 +2,7 @@ import asyncio
 
 import logging
 
-from .translation import Ardupilot
+from .translation import MavLink
 from .message_broker import MessageBroker
 
 # Controller holds instance of link interface
@@ -52,7 +52,7 @@ class FlightController:
         self.operation_lock = asyncio.Lock()
 
         # Initialize hardware translator
-        self.translator = Ardupilot(self.device)
+        self.translator = MavLink(self.device)
 
         # Message Broker
         self.message_broker = MessageBroker(app)
@@ -114,46 +114,34 @@ class FlightController:
 
     async def takeoff_state_actions(self):
         if self.has_bay_clearance:
-            if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-                status = await self.translator.ensure_ascend()
-                if status is None:
-                    pass
-                elif status == self.translator.STATUS_DONE_COMMAND:
-                    self.set_state(self.STATE_IN_FLIGHT)
-                    self.has_bay_clearance = False
-                elif status > 20:
-                    await self.message_broker.ensure_bay_cleared(self.bay["id"])
-            elif self.translator.status == self.translator.STATUS_IDLE:
-                await self.translator.ascend(self.current_path["start"]["alt"])
+            await self.translator.drone.action.arm()
+            await self.translator.drone.action.set_takeoff_altitude(self.current_path["start"]["alt"])
+            await self.translator.drone.action.takeoff()
+            await self.message_broker.ensure_bay_cleared(self.bay["id"])
+            self.set_state(self.STATE_IN_FLIGHT)
 
     async def landing_actions(self):
         if self.has_bay_clearance:
-            if self.translator.status == self.translator.STATUS_IDLE:
-                await self.translator.land()
-            elif self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-                await self.translator.ensure_land()
-            if self.translator.status == self.translator.STATUS_DONE_COMMAND:
-                self.set_state(self.STATE_IDLE)
+            await self.translator.drone.action.land()
+            await self.translator.drone.action.disarm()
+            self.set_state(self.STATE_IDLE)
         else:
             await self.get_bay_clearance()
 
     async def flight_actions(self):
-        if self.translator.status == self.translator.STATUS_IDLE or \
-                self.translator.status == self.translator.STATUS_DONE_COMMAND:
-            await self.translator.goto(self.current_path["start"])
-        if self.translator.status == self.translator.STATUS_EXECUTING_COMMAND:
-            status = await self.translator.ensure_goto()
-            if status == self.translator.STATUS_DONE_COMMAND:
-                self.translator.status = self.translator.STATUS_IDLE
-                self.current_path = None
-                if self.on_job:
-                    part_type = self.whole_job[self.current_job_part]["type"]
-                    if part_type == "delivery":
-                        self.set_state(self.STATE_IN_DELIVERY)
-                    else:
-                        self.set_state(self.STATE_IN_PICKUP)
-                else:
-                    self.set_state(self.STATE_LANDING)
+        await self.translator.drone.action.goto_location(
+            self.whole_job[self.current_job_part]["lat"],
+            self.whole_job[self.current_job_part]["lng"],
+            self.translator.home_location.absolute_altitude_m + self.whole_job[self.current_job_part]["alt"])
+        self.current_path = None
+        if self.on_job:
+            part_type = self.whole_job[self.current_job_part]["type"]
+            if part_type == "delivery":
+                self.set_state(self.STATE_IN_DELIVERY)
+            else:
+                self.set_state(self.STATE_IN_PICKUP)
+        else:
+            self.set_state(self.STATE_LANDING)
 
     async def delivery_actions(self):
         self.current_job_part += 1
@@ -178,7 +166,6 @@ class FlightController:
 
         # Set the state
         self.state = state
-
 
     async def handle_next_path(self):
         # check if we need to send a path proposal
