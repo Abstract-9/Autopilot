@@ -54,11 +54,10 @@ class FlightController:
         # Initialize hardware translator
         self.translator = MavLink(self.device)
 
-        # Message Broker
+        # Message Brokerk
         self.message_broker = MessageBroker(app)
 
         asyncio.create_task(self._initialize())
-
 
     # For async initialization needs
     async def _initialize(self):
@@ -77,7 +76,7 @@ class FlightController:
     # Handle how to fly. Designed as a state machine, with decision trees under each state.
     async def main_loop(self):
         if self.state == self.STATE_IDLE:
-           await self.idle_state_actions()
+            await self.idle_state_actions()
         elif self.state == self.STATE_TAKEOFF:
             await self.takeoff_state_actions()
         elif self.state == self.STATE_LANDING:

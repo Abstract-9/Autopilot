@@ -2,12 +2,9 @@ import asyncio
 import math
 import logging
 from mavsdk import System
-from dronekit import connect, VehicleMode, LocationGlobalRelative
 
-from .link_interface import LinkInterface
 
-# TODO Ismail, Zak unit tests
-class MavLink(LinkInterface):
+class MavLink:
     # Create pre-defined flight status objects
     STATUS_IDLE = 0
     STATUS_DONE_COMMAND = 1
@@ -22,134 +19,15 @@ class MavLink(LinkInterface):
 
     logger = logging.getLogger(__name__)
 
-    ################# CONTROL SECTION #################
-    # This section contains methods for changing various states in the flight controller
-
-    # TODO: Create unit test
-    async def arm(self):
-        while not self.drone.is_armable:
-            print(" Waiting for vehicle to initialise...")
-            await asyncio.sleep(1)
-        self.drone.mode = VehicleMode("GUIDED")
-        while not self.drone.mode.name == "GUIDED":
-            print("Changing to GUIDED...")
-            self.drone.mode = "GUIDED"
-            await asyncio.sleep(1)
-        self.drone.armed = True
-        while not self.drone.armed:
-            print("Arming motors... Vehicle Mode: ")
-            await asyncio.sleep(1)
-        print("Armed!")
-
-    # TODO: Create unit test
-    async def disarm(self):
-        self.drone.armed = False
-        while self.drone.armed:
-            print("Disarming motors... Vehicle Mode: ")
-            await asyncio.sleep(1)
-        print("Disarmed!")
-
-    ################# FLIGHT SECTION #################
-    # This section contains the methods for piloting the drone
-
-    async def ascend(self, alt):
-        self.status = self.STATUS_EXECUTING_COMMAND
-
-        # Can't take off without arming
-        if not self.drone.armed:
-            await self.arm()
-        # Ready to go!
-        print("Taking off!")
-
-        self.altitude = alt
-        # Make sure takeoff happens
-        self.drone.simple_takeoff(alt)
-        while self.drone.mode.name != "GUIDED":
-            print("Taking off | Vehicle mode: {}".format(self.drone.mode.name))
-            self.drone.mode = VehicleMode("GUIDED")
-            self.drone.simple_takeoff(alt)
-        await self.ensure_ascend()
-        # while True:
-        #     print(" Altitude: ", self.drone.location.global_relative_frame.alt)
-        #     # Break and return from function
-        #     print(" Altitude: ", self.drone.location.global_relative_frame.alt)
-        #     # Break and return from function just below target altitude.
-        #     if self.drone.location.global_relative_frame.alt >= command.alt * 0.95:
-        #         print("Reached target altitude: Ready for mission")
-        #         break
-        #     await asyncio.sleep(1)
-
-    async def ensure_ascend(self):
-        def current_distance():
-            return self.altitude - self.drone.location.global_relative_frame.alt
-
-        check = current_distance()
-
-        await asyncio.sleep(0.25)
-        if current_distance() < check:
-            return current_distance()
-        elif current_distance() < 0.25:  # Close enough, we're done. Goto will ensure flight altitude anyways
-            self.status = self.STATUS_DONE_COMMAND
-            return self.status
-        else:
-            self.drone.simple_takeoff(self.altitude)
-
-    async def goto(self, geometry):
-        self.status = self.STATUS_EXECUTING_COMMAND
-
-        self.target_location = LocationGlobalRelative(geometry["lat"], geometry["lng"], geometry["alt"])
-        self.drone.simple_goto(self.target_location)
-
-        await self.ensure_goto()
-        # while self.drone.mode.name == "GUIDED":  # Stop action if we are no longer in guided mode.
-        #     remaining_distance = get_distance_metres(self.drone.location.global_frame, target_location)
-        #     print("Distance to target: ", remaining_distance)
-        #     if remaining_distance <= target_distance * 0.01:  # Just below target, in case of undershoot.
-        #         print("Reached target")
-        #         break
-        #     time.sleep(2)
-
-    # Ensures that the drone continues to its destination.
-    async def ensure_goto(self) -> int:
-        current_location = self.drone.location.global_relative_frame
-        target_distance = get_distance_metres(current_location, self.target_location)
-
-        await asyncio.sleep(0.25)
-        remaining_distance = get_distance_metres(self.drone.location.global_frame, self.target_location)
-        print("GOTO: Remaining Distance: {}".format(remaining_distance))
-        # We will need a better method of determining arrival, maybe combine airspeed check?
-        # TODO: Yes, lets do that. implement a vector transform to get absolute velocity.
-        if remaining_distance < 0.75:
-            self.status = self.STATUS_DONE_COMMAND
-        # Ensure goto
-        elif target_distance - remaining_distance < 0.5:
-            self.drone.simple_goto(self.target_location)
-        return self.status
-
-    async def land(self):
-        self.status = self.STATUS_EXECUTING_COMMAND
-        self.drone.mode = VehicleMode("LAND")
-        await self.ensure_land()
-
-    async def ensure_land(self):
-        if self.drone.mode.name == "LAND":
-            if self.drone.velocity[2] < 0.05:  # It's not moving, so we've landed
-                self.status = self.STATUS_DONE_COMMAND
-                return self.status
-        else:
-            self.drone.mode = VehicleMode("LAND")
-
     ################# INFORMATION SECTION #################
     # This section stores methods for accessing various information from the flight controller
 
-    # TODO: Create unit test
-    async def get_heartbeat_status(self):
+    def get_heartbeat_status(self):
         return self.get_location().update({
             "Mode": self.flight_mode,
             "Battery": self.battery.remaining_percent
         })
 
-    # TODO: Create unit test
     def get_location(self):
         return {
             "lat": self.location.latitude_deg,
@@ -217,11 +95,10 @@ class MavLink(LinkInterface):
         self.is_ready.set()
 
 
+"""
+The following is utility functions for various calculations
+"""
 
-# The following is utility functions for various calculations
-
-
-# TODO: Create unit test
 def get_distance_metres(location1, location2):
     """
     Returns the ground distance in metres between two LocationGlobal objects.
@@ -234,8 +111,6 @@ def get_distance_metres(location1, location2):
     dlong = location2.lon - location1.lon
     return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
 
-
-# TODO: Create unit test
 def get_bearing(location1, location2):
     """
     Returns the bearing between the two LocationGlobal objects passed as parameters.
