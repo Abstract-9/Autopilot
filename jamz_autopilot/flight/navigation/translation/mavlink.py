@@ -19,8 +19,10 @@ class MavLink:
 
     logger = logging.getLogger(__name__)
 
-    ################# INFORMATION SECTION #################
-    # This section stores methods for accessing various information from the flight controller
+    """ 
+        - INFORMATION SECTION -
+        This section stores methods for accessing various information from the flight controller
+    """
 
     def get_heartbeat_status(self):
         return self.get_location().update({
@@ -49,8 +51,10 @@ class MavLink:
         async for mode in self.drone.telemetry.flight_mode():
             self.flight_mode = mode.name
 
-    ################# Utility section #################
-    # This section contains various utility and I/O methods
+    """ 
+        - UTILITY SECTION -
+        This section contains various utility and I/O methods
+    """
 
     def __init__(self, device):
         self.drone = System()

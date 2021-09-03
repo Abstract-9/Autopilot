@@ -1,8 +1,10 @@
 import asyncio
+import configparser
 from jamz_autopilot.communications import Client
-from jamz_autopilot.flight.navigation import FlightController
+from jamz_autopilot.flight.navigation import FlightController, TestFlightController
 
 import logging
+
 
 class App:
 
@@ -12,8 +14,17 @@ class App:
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
 
+        # Load the configuration
+        self.load_config()
+
         self.comms = Client(self)
-        self.flight_con = FlightController(self)
+
+        # If testing mode is set, use the test flight controller.
+        if self.config.get("Application", "Mode").lower() == "test":
+            self.flight_con = TestFlightController(self)
+        else:
+            self.flight_con = FlightController(self)
+
         self.comms.message_broker = self.flight_con.message_broker
         # try:
         #     while(1):
@@ -23,6 +34,20 @@ class App:
         #     Flight(loop)
         # finally:
         #     loop.close()
+
+    def load_config(self) -> None:
+        config = configparser.ConfigParser()
+        # The following declares default values for the config. Values can be customized in config.ini.
+        config.read_dict({
+            "Application": {
+                "Mode": "production"
+            },
+            "Flight": {
+                "GroundSpeed": 10
+            }
+        })
+        config.read("config.ini")  # Read user values from the config file
+        self.config = config
 
 
 async def _main():
