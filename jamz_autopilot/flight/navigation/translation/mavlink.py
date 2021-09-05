@@ -25,17 +25,22 @@ class MavLink:
     """
 
     def get_heartbeat_status(self):
-        return self.get_location().update({
-            "Mode": self.flight_mode,
-            "Battery": self.battery.remaining_percent
-        })
+        if self.location and self.battery and self.flight_mode is not None:
+            status = self.get_location()
+            status.update({
+                "Mode": self.flight_mode,
+                "Battery": self.battery
+            })
+            return status
+        else:
+            return None
 
     def get_location(self):
         return {
             "lat": self.location.latitude_deg,
             "lng": self.location.longitude_deg,
             "alt": self.location.absolute_altitude_m
-        }
+        } if self.location else None
 
     # The following methods are used to subscribe to various drone status updates
 
@@ -94,6 +99,7 @@ class MavLink:
         # Subscribe to necessary info feeds
         asyncio.create_task(self.sub_battery())
         asyncio.create_task(self.sub_location())
+        asyncio.create_task(self.sub_flight_mode())
 
         self.logger.info("MAVSdk initialization complete! Home location: %s" % self.home_location)
         self.is_ready.set()

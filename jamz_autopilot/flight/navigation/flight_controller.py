@@ -18,7 +18,7 @@ class FlightController:
     # "/dev/ttyACM0" Serial interface over USB
     # "tcp:127.0.0.1:5760" Local TCP connection
     # "udp:127.0.0.1:5202" Local UDP connection
-    device = "tcp:172.22.178.64:5760"
+    device = "udp://:14540"
 
     logger = logging.getLogger(__name__)
 
@@ -118,20 +118,23 @@ class FlightController:
             await self.translator.drone.action.takeoff()
             await self.message_broker.ensure_bay_cleared(self.bay["id"])
             self.set_state(self.STATE_IN_FLIGHT)
+            self.logger.info("Reached target altitude; Starting flight")
 
     async def landing_actions(self):
         if self.has_bay_clearance:
             await self.translator.drone.action.land()
             await self.translator.drone.action.disarm()
+            await self.message_broker.ensure_bay_cleared(self.bay["id"])
             self.set_state(self.STATE_IDLE)
         else:
             await self.get_bay_clearance()
 
     async def flight_actions(self):
+        self.logger.info("Starting GOTO")
         await self.translator.drone.action.goto_location(
-            self.whole_job[self.current_job_part]["lat"],
-            self.whole_job[self.current_job_part]["lng"],
-            self.translator.home_location.absolute_altitude_m + self.whole_job[self.current_job_part]["alt"])
+            self.whole_job[self.current_job_part]["geometry"]["lat"],
+            self.whole_job[self.current_job_part]["geometry"]["lng"],
+            self.translator.home_location.absolute_altitude_m + self.whole_job[self.current_job_part]["geometry"]["alt"])
         self.current_path = None
         if self.on_job:
             part_type = self.whole_job[self.current_job_part]["type"]
@@ -216,6 +219,9 @@ class FlightController:
 
     def get_transmittable_status(self):
         status = self.translator.get_heartbeat_status()
+        if status is None:  # If theres no status yet, skip the rest
+            return None
+
         status["Flight_Controller_State"] = self.state_as_string()
         status["Bay"] = self.bay
         status["on_job"] = self.on_job

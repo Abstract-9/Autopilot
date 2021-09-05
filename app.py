@@ -1,5 +1,7 @@
 import asyncio
 import configparser
+import os
+
 from jamz_autopilot.communications import Client
 from jamz_autopilot.flight.navigation import FlightController, TestFlightController
 
@@ -46,7 +48,7 @@ class App:
                 "GroundSpeed": 10
             }
         })
-        config.read("config.ini")  # Read user values from the config file
+        config.read(os.path.join(os.getcwd(), "../config.ini"))  # Read user values from the config file
         self.config = config
 
 

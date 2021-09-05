@@ -42,6 +42,27 @@ class TestFlightController (FlightController):
         elif self.state == self.STATE_IN_AIR_IDLE:
             await self.in_air_idle_actions()
 
+        self.log_state()
+        # Schedule callback
+        await asyncio.sleep(0.5)
+        asyncio.create_task(self.main_loop())
+
+    async def takeoff_state_actions(self):
+        if self.has_bay_clearance:
+            await self.translator.drone.action.arm()
+            await self.translator.drone.action.set_takeoff_altitude(self.current_path["start"]["alt"])
+            await self.translator.drone.action.takeoff()
+            self.set_state(self.STATE_IN_FLIGHT)
+            self.logger.info("Reached target altitude; Starting flight")
+
+    async def landing_actions(self):
+        if self.has_bay_clearance:
+            await self.translator.drone.action.land()
+            await self.translator.drone.action.disarm()
+            self.set_state(self.STATE_IDLE)
+        else:
+            await self.get_bay_clearance()
+
     async def delivery_actions(self):
         self.current_job_part += 1
         await self.handle_next_path()
@@ -83,6 +104,19 @@ class TestFlightController (FlightController):
         self.check_job_state()
         if self.on_job:
             current_job_part = self.whole_job[self.current_job_part]
-            destination = \
-                {"lat": current_job_part["geometry"]["lat"], "lng": current_job_part["geometry"]["lng"]}
-            self.current_path = destination
+            path = \
+                {
+                    "start":
+                        {
+                            "lat": self.translator.location.latitude_deg,
+                            "lng": self.translator.location.longitude_deg,
+                            "alt": 25
+                        },
+                    "end":
+                        {
+                            "lat": current_job_part["geometry"]["lat"],
+                            "lng": current_job_part["geometry"]["lng"],
+                            "alt": 25
+                        }
+                }
+            self.current_path = path
