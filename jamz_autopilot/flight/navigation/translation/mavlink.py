@@ -2,6 +2,7 @@ import asyncio
 import math
 import logging
 from mavsdk import System
+from mavsdk.action import ActionError
 
 
 class MavLink:
@@ -19,6 +20,45 @@ class MavLink:
 
     logger = logging.getLogger(__name__)
 
+    """
+       - FLIGHT SECTION -
+    """
+
+    async def takeoff(self, alt):
+        try:
+            await self.drone.action.takeoff()
+        except ActionError as e:
+            print(e)
+            return
+        async for pos in self.drone.telemetry.position():
+            if pos.relative_altitude_m > alt-0.75:
+                break
+
+    async def goto(self, lat, lng, abs_alt):
+        try:
+            await self.drone.action.goto_location(lat, lng, abs_alt, 0)
+        except ActionError as e:
+            print(e)
+            return
+        async for pos in self.drone.telemetry.position():
+            if lat - 0.00001 <= pos.latitude_deg <= lat + 0.00001:
+                async for message in self.drone.telemetry.odometry():
+                    if message.velocity_body.x_m_s + message.velocity_body.y_m_s < 0.1:
+                        break
+                break
+
+    async def land(self):
+        try:
+            await self.drone.action.land()
+        except ActionError as e:
+            print(e)
+            return
+        async for e in self.drone.telemetry.armed():
+            if not e:
+                break
+
+
+
     """ 
         - INFORMATION SECTION -
         This section stores methods for accessing various information from the flight controller
@@ -29,7 +69,7 @@ class MavLink:
             status = self.get_location()
             status.update({
                 "Mode": self.flight_mode,
-                "Battery": self.battery
+                "Battery": int(self.battery * 100)  # Send the battery level as 0-100% instead of 0-1
             })
             return status
         else:
@@ -100,6 +140,10 @@ class MavLink:
         asyncio.create_task(self.sub_battery())
         asyncio.create_task(self.sub_location())
         asyncio.create_task(self.sub_flight_mode())
+
+        self.logger.info("Waiting for location estimate...")
+        while not self.location:
+            await asyncio.sleep(1)
 
         self.logger.info("MAVSdk initialization complete! Home location: %s" % self.home_location)
         self.is_ready.set()

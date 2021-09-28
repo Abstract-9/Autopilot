@@ -42,7 +42,8 @@ class App:
         # The following declares default values for the config. Values can be customized in config.ini.
         config.read_dict({
             "Application": {
-                "Mode": "production"
+                "Mode": "production",
+                "Server": "192.168.0.249"
             },
             "Flight": {
                 "GroundSpeed": 10

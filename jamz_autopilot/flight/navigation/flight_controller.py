@@ -42,6 +42,7 @@ class FlightController:
         self.current_job_part = None
         self.bay = None
         self.current_path = None
+        self.envelope = None
 
         # Use custom connection string if supplied
         if device:
@@ -54,7 +55,7 @@ class FlightController:
         # Initialize hardware translator
         self.translator = MavLink(self.device)
 
-        # Message Brokerk
+        # Message Broker
         self.message_broker = MessageBroker(app)
 
         asyncio.create_task(self._initialize())
@@ -114,16 +115,17 @@ class FlightController:
     async def takeoff_state_actions(self):
         if self.has_bay_clearance:
             await self.translator.drone.action.arm()
-            await self.translator.drone.action.set_takeoff_altitude(self.current_path["start"]["alt"])
-            await self.translator.drone.action.takeoff()
+            self.envelope = self.current_path["start"]["alt"]
+            await self.translator.drone.action.set_takeoff_altitude(self.envelope)
+            await self.translator.takeoff(self.envelope)
             await self.message_broker.ensure_bay_cleared(self.bay["id"])
+            self.bay = None
             self.set_state(self.STATE_IN_FLIGHT)
             self.logger.info("Reached target altitude; Starting flight")
 
     async def landing_actions(self):
         if self.has_bay_clearance:
-            await self.translator.drone.action.land()
-            await self.translator.drone.action.disarm()
+            await self.translator.land()
             await self.message_broker.ensure_bay_cleared(self.bay["id"])
             self.set_state(self.STATE_IDLE)
         else:
@@ -131,10 +133,10 @@ class FlightController:
 
     async def flight_actions(self):
         self.logger.info("Starting GOTO")
-        await self.translator.drone.action.goto_location(
+        await self.translator.goto(
             self.whole_job[self.current_job_part]["geometry"]["lat"],
             self.whole_job[self.current_job_part]["geometry"]["lng"],
-            self.translator.home_location.absolute_altitude_m + self.whole_job[self.current_job_part]["geometry"]["alt"])
+            self.translator.home_location.absolute_altitude_m + self.envelope)
         self.current_path = None
         if self.on_job:
             part_type = self.whole_job[self.current_job_part]["type"]
@@ -150,6 +152,7 @@ class FlightController:
         await self.handle_next_path()
         await asyncio.sleep(5)
         while self.current_path is None:
+            await self.handle_next_path()
             await asyncio.sleep(5)
         self.set_state(self.STATE_IN_FLIGHT)
 
@@ -158,6 +161,7 @@ class FlightController:
         await self.handle_next_path()
         await asyncio.sleep(5)
         while self.current_path is None:
+            await self.handle_next_path()
             await asyncio.sleep(5)
         self.set_state(self.STATE_IN_FLIGHT)
 
@@ -209,8 +213,7 @@ class FlightController:
             await self.message_broker.send_message(
                 self.message_broker.generate_access_request(self.bay["id"]))
         elif bay_clearance_granted is not None:
-            # Assign bay clearance, but remove the bay_id since we're leaving
-            self.bay = None
+            # Assign bay clearance
             self.has_bay_clearance = True
 
     def check_job_state(self):

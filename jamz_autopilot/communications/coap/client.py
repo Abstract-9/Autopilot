@@ -9,7 +9,6 @@ import json
 class Client:
 
     drone_id = hex(uuid.getnode())
-    request_uri = "coap://172.27.240.1:5683/status?drone_id=" + drone_id  # Localhost for testing
     log = logging.getLogger(__name__)
 
     def __init__(self, app):
@@ -19,6 +18,9 @@ class Client:
         self.outgoing_messages = []
 
         self.app = app
+
+        # Get the server IP from the config file
+        self.request_uri = f"coap://{app.config.get('Application', 'Server')}:5683/status?drone_id=" + self.drone_id
 
         # Set up ready event
         self.ready = asyncio.locks.Event()
