@@ -43,6 +43,7 @@ class FlightController:
         self.bay = None
         self.current_path = None
         self.envelope = None
+        self.config = app.config
 
         # Use custom connection string if supplied
         if device:
@@ -71,6 +72,7 @@ class FlightController:
             await self.get_bay_assignment(location)
             await asyncio.sleep(0.25)
 
+        await self.translator.drone.action.set_maximum_speed(float(self.config["Flight"]["GroundSpeed"]))
         asyncio.create_task(self.main_loop())
 
     # Genuinely, the thick of the logic.
@@ -118,7 +120,7 @@ class FlightController:
             self.envelope = self.current_path["start"]["alt"]
             await self.translator.drone.action.set_takeoff_altitude(self.envelope)
             await self.translator.takeoff(self.envelope)
-            await self.message_broker.ensure_bay_cleared(self.bay["id"])
+            await self.ensure_bay_cleared()
             self.bay = None
             self.set_state(self.STATE_IN_FLIGHT)
             self.logger.info("Reached target altitude; Starting flight")
@@ -126,17 +128,24 @@ class FlightController:
     async def landing_actions(self):
         if self.has_bay_clearance:
             await self.translator.land()
-            await self.message_broker.ensure_bay_cleared(self.bay["id"])
+            await self.ensure_bay_cleared()
             self.set_state(self.STATE_IDLE)
         else:
             await self.get_bay_clearance()
 
     async def flight_actions(self):
         self.logger.info("Starting GOTO")
-        await self.translator.goto(
-            self.whole_job[self.current_job_part]["geometry"]["lat"],
-            self.whole_job[self.current_job_part]["geometry"]["lng"],
-            self.translator.home_location.absolute_altitude_m + self.envelope)
+        if self.on_job:
+            await self.translator.goto(
+                self.whole_job[self.current_job_part]["geometry"]["lat"],
+                self.whole_job[self.current_job_part]["geometry"]["lng"],
+                self.translator.home_location.absolute_altitude_m + self.envelope)
+        else:
+            await self.translator.goto(
+                self.bay["geometry"]["location"]["lat"],
+                self.bay["geometry"]["location"]["lng"],
+                self.translator.home_location.absolute_altitude_m + self.envelope
+            )
         self.current_path = None
         if self.on_job:
             part_type = self.whole_job[self.current_job_part]["type"]
@@ -185,7 +194,7 @@ class FlightController:
                 # Check if we need landing bay assignment
                 await self.get_bay_assignment(location)
             elif not self.on_job:
-                destination = {"lat": self.bay["geometry"]["lat"], "lng": self.bay["geometry"]["lng"]}
+                destination = {"lat": self.bay["geometry"]["location"]["lat"], "lng": self.bay["geometry"]["location"]["lng"]}
             else:
                 current_job_part = self.whole_job[self.current_job_part]
                 destination = \
@@ -215,6 +224,10 @@ class FlightController:
         elif bay_clearance_granted is not None:
             # Assign bay clearance
             self.has_bay_clearance = True
+
+    async def ensure_bay_cleared(self):
+        self.has_bay_clearance = False
+        await self.message_broker.ensure_bay_cleared(self.bay["id"])
 
     def check_job_state(self):
         if self.current_job_part >= len(self.whole_job):

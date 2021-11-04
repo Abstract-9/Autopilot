@@ -58,9 +58,9 @@ class MessageBroker:
         self.incoming_messages_lock.release()
         return None
 
-    async def ensure_bay_cleared(self, bay_id: int) -> None:
-        if type(bay_id) is str:
-            bay_id = int(bay_id)
+    async def ensure_bay_cleared(self, bay_id: str) -> None:
+        if type(bay_id) is int:
+            bay_id = str(bay_id)
         if not self.bay_cleared:
             await self.send_message(self.generate_bay_cleared(bay_id))
             self.bay_cleared = True
@@ -78,5 +78,5 @@ class MessageBroker:
         return {"eventType": "AssignmentRequest", "geometry": location}
 
     @staticmethod
-    def generate_bay_cleared(bay_id: int) -> dict:
+    def generate_bay_cleared(bay_id: str) -> dict:
         return {"eventType": "AccessComplete", "bay_id": bay_id}
