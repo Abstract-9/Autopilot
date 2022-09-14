@@ -1,0 +1,31 @@
+stages:
+  - Analysis
+  - Build
+  - Test
+
+before_script:
+  - python --version
+
+
+
+build-job:
+  
+  stage: Build
+  script:
+    - echo "building..."
+    - echo "setting up drone-kit"
+
+pylint:
+  
+  stage: Analysis
+  allow_failure: true
+  script:
+   - pylint jamz_autopilot
+test:
+  
+  stage: Test
+  script:
+    - echo "starting unit tests!"
+    - python -m unittest test/communications/communications_tests.py
+   
+
